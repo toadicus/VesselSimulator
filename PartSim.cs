@@ -632,6 +632,11 @@ namespace Engineer.VesselSimulator
             return mass;
         }
 
+        public double GetBaseMass()
+        {
+            return baseMass;
+        }
+
         public ResourceContainer Resources
         {
             get

@@ -313,6 +313,7 @@ namespace Engineer.VesselSimulator
                     {
                         stage.cost += partSim.cost;
                         stage.mass += partSim.GetStartMass();
+                        stage.baseMass += partSim.GetBaseMass();
                     }
                 }
 
@@ -454,6 +455,7 @@ namespace Engineer.VesselSimulator
                 {
                     stages[i].totalCost += stages[j].cost;
                     stages[i].totalMass += stages[j].mass;
+                    stages[i].totalBaseMass += stages[j].baseMass;
                     stages[i].totalDeltaV += stages[j].deltaV;
                     stages[i].totalTime += stages[j].time;
                 }

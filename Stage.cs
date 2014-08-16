@@ -15,7 +15,9 @@ namespace Engineer.VesselSimulator
         public double time = 0f;
         public double totalTime = 0f;
         public double mass = 0f;
+        public double baseMass = 0f;
         public double totalMass = 0f;
+        public double totalBaseMass = 0f;
         public double isp = 0f;
         public double thrust = 0f;
         public double actualThrust = 0f;

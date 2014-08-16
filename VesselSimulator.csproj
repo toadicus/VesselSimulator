@@ -102,4 +102,14 @@
       <HintPath>..\_KSPAssemblies\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
+  <ProjectExtensions>
+    <MonoDevelop>
+      <Properties>
+        <Policies>
+          <TextStylePolicy FileWidth="120" inheritsSet="VisualStudio" inheritsScope="text/plain" scope="text/x-csharp" />
+          <CSharpFormattingPolicy IndentSwitchBody="True" AnonymousMethodBraceStyle="NextLine" PropertyBraceStyle="NextLine" PropertyGetBraceStyle="NextLine" PropertySetBraceStyle="NextLine" SimpleGetBlockFormatting="ForceNewLine" SimpleSetBlockFormatting="ForceNewLine" EventBraceStyle="NextLine" EventAddBraceStyle="NextLine" EventRemoveBraceStyle="NextLine" StatementBraceStyle="NextLine" ElseNewLinePlacement="NewLine" CatchNewLinePlacement="NewLine" FinallyNewLinePlacement="NewLine" WhileNewLinePlacement="DoNotCare" ArrayInitializerBraceStyle="NextLine" BeforeMethodDeclarationParentheses="False" BeforeMethodCallParentheses="False" BeforeConstructorDeclarationParentheses="False" BeforeIndexerDeclarationBracket="False" BeforeDelegateDeclarationParentheses="False" NewParentheses="False" SpacesBeforeBrackets="False" MethodCallArgumentWrapping="WrapIfTooLong" NewLineAferMethodCallOpenParentheses="NewLine" MethodCallClosingParenthesesOnNewLine="NewLine" MethodDeclarationParameterWrapping="WrapIfTooLong" NewLineAferMethodDeclarationOpenParentheses="SameLine" MethodDeclarationClosingParenthesesOnNewLine="NewLine" IndexerDeclarationParameterWrapping="WrapIfTooLong" NewLineAferIndexerDeclarationOpenBracket="NewLine" IndexerDeclarationClosingBracketOnNewLine="NewLine" IndexerArgumentWrapping="WrapIfTooLong" NewLineAferIndexerOpenBracket="NewLine" IndexerClosingBracketOnNewLine="NewLine" inheritsSet="Mono" inheritsScope="text/x-csharp" scope="text/x-csharp" />
+        </Policies>
+      </Properties>
+    </MonoDevelop>
+  </ProjectExtensions>
 </Project>
