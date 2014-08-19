@@ -17,10 +17,9 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG; TRACE</DefineConstants>
+    <DefineConstants>DEBUG; TRACE; TIMERS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
     <ConsolePause>false</ConsolePause>
     <CustomCommands>
       <CustomCommands>
@@ -46,11 +45,10 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG; TRACE</DefineConstants>
+    <DefineConstants>DEBUG; TRACE; TIMERS</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
-    <PlatformTarget>x86</PlatformTarget>
     <CustomCommands>
       <CustomCommands>
         <Command type="AfterBuild" command="cp -afv ${TargetFile} /opt/games/KSP_linux/GameData/VOID/Plugins/" />
