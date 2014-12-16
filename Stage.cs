@@ -1,53 +1,78 @@
-﻿// Kerbal Engineer Redux
-// Author:  CYBUTEK
-// License: Attribution-NonCommercial-ShareAlike 3.0 Unported
+// 
+//     Kerbal Engineer Redux
+// 
+//     Copyright (C) 2014 CYBUTEK
+// 
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+// 
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+// 
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// 
+
+#region Using Directives
 
 using System.Text;
+
 using UnityEngine;
 
-namespace Engineer.VesselSimulator
+#endregion
+
+namespace KerbalEngineer.VesselSimulator
 {
     public class Stage
     {
-        public int number = 0;
-        public float cost = 0;
-        public float totalCost = 0;
-        public double time = 0f;
-        public double totalTime = 0f;
-        public double mass = 0f;
-        public double baseMass = 0f;
-        public double totalMass = 0f;
-        public double totalBaseMass = 0f;
-        public double isp = 0f;
-        public double thrust = 0f;
         public double actualThrust = 0f;
-        public double thrustToWeight = 0f;
-        public double maxThrustToWeight = 0f;
         public double actualThrustToWeight = 0f;
+        public double cost = 0d;
         public double deltaV = 0f;
-        public double totalDeltaV = 0f;
         public double inverseTotalDeltaV = 0f;
+        public double isp = 0f;
+        public double mass = 0f;
+        public double maxThrustToWeight = 0f;
+        public int number = 0;
+        public double thrust = 0f;
+        public double thrustToWeight = 0f;
+        public double time = 0f;
+        public double totalCost = 0;
+        public double totalDeltaV = 0f;
+        public double totalMass = 0f;
+        public double totalTime = 0f;
+        public int totalPartCount = 0;
+        public int partCount = 0;
+        public double resourceMass = 0.0;
+        public double maxThrustTorque = 0f;
+        public double thrustOffsetAngle = 0f;
 
         public void Dump()
         {
             StringBuilder str = new StringBuilder("", 512);
-            str.AppendFormat("number        : {0:d}\n", number);
-            str.AppendFormat("cost          : {0:g6}\n", cost);
-            str.AppendFormat("totalCost     : {0:g6}\n", totalCost);
-            str.AppendFormat("time          : {0:g6}\n", time);
-            str.AppendFormat("totalTime     : {0:g6}\n", totalTime);
-            str.AppendFormat("mass          : {0:g6}\n", mass);
-            str.AppendFormat("totalMass     : {0:g6}\n", totalMass);
-            str.AppendFormat("isp           : {0:g6}\n", isp);
-            str.AppendFormat("thrust        : {0:g6}\n", thrust);
-            str.AppendFormat("actualThrust  : {0:g6}\n", actualThrust);
-            str.AppendFormat("thrustToWeight: {0:g6}\n", thrustToWeight);
-            str.AppendFormat("maxTWR        : {0:g6}\n", maxThrustToWeight);
-            str.AppendFormat("actualTWR     : {0:g6}\n", actualThrustToWeight);
-            str.AppendFormat("deltaV        : {0:g6}\n", deltaV);
-            str.AppendFormat("totalDeltaV   : {0:g6}\n", totalDeltaV);
-            str.AppendFormat("invTotDeltaV  : {0:g6}\n", inverseTotalDeltaV);
-            
+            str.AppendFormat("number        : {0:d}\n", this.number);
+            str.AppendFormat("cost          : {0:g6}\n", this.cost);
+            str.AppendFormat("totalCost     : {0:g6}\n", this.totalCost);
+            str.AppendFormat("time          : {0:g6}\n", this.time);
+            str.AppendFormat("totalTime     : {0:g6}\n", this.totalTime);
+            str.AppendFormat("mass          : {0:g6}\n", this.mass);
+            str.AppendFormat("totalMass     : {0:g6}\n", this.totalMass);
+            str.AppendFormat("isp           : {0:g6}\n", this.isp);
+            str.AppendFormat("thrust        : {0:g6}\n", this.thrust);
+            str.AppendFormat("actualThrust  : {0:g6}\n", this.actualThrust);
+            str.AppendFormat("thrustToWeight: {0:g6}\n", this.thrustToWeight);
+            str.AppendFormat("maxTWR        : {0:g6}\n", this.maxThrustToWeight);
+            str.AppendFormat("actualTWR     : {0:g6}\n", this.actualThrustToWeight);
+            str.AppendFormat("ThrustTorque  : {0:g6}\n", this.maxThrustTorque);
+            str.AppendFormat("ThrustOffset  : {0:g6}\n", this.thrustOffsetAngle);
+            str.AppendFormat("deltaV        : {0:g6}\n", this.deltaV);
+            str.AppendFormat("totalDeltaV   : {0:g6}\n", this.totalDeltaV);
+            str.AppendFormat("invTotDeltaV  : {0:g6}\n", this.inverseTotalDeltaV);
+
             MonoBehaviour.print(str);
         }
     }

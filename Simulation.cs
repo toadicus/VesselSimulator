@@ -1,65 +1,109 @@
-﻿// Kerbal Engineer Redux
-// Author:  CYBUTEK
-// License: Attribution-NonCommercial-ShareAlike 3.0 Unported
-//
-// This class has taken a lot of inspiration from r4m0n's MuMech FuelFlowSimulator.  Although extremely
-// similar to the code used within MechJeb, it is a clean re-write.  The similarities are a testiment
-// to how well the MuMech code works and the robustness of the simulation algorithem used.
+// 
+//     Kerbal Engineer Redux
+// 
+//     Copyright (C) 2014 CYBUTEK
+// 
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+// 
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+// 
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// 
+
+#region Using Directives
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using UnityEngine;
-using Engineer.Extensions;
 
-namespace Engineer.VesselSimulator
+using UnityEngine;
+
+#endregion
+
+namespace KerbalEngineer.VesselSimulator
 {
     public class Simulation
     {
-        private List<Part> partList;
-
-        private List<PartSim> allParts;
-        private List<PartSim> allFuelLines;
-        private HashSet<PartSim> drainingParts;
-        private List<EngineSim> allEngines;
+        private const double STD_GRAVITY = 9.82;
+        private const double SECONDS_PER_DAY = 86400;
+        private readonly Stopwatch _timer = new Stopwatch();
         private List<EngineSim> activeEngines;
-        private HashSet<int> drainingResources;
+        private List<EngineSim> allEngines;
+        private List<PartSim> allFuelLines;
+        private List<PartSim> allParts;
+        private double atmosphere;
+        private int currentStage;
+        private double currentisp;
+        private bool doingCurrent;
         private List<PartSim> dontStageParts;
+        private HashSet<PartSim> drainingParts;
+        private HashSet<int> drainingResources;
+        private double gravity;
 
-        private int lastStage = 0;
-        private int currentStage = 0;
-        private bool doingCurrent = false;
-
+        private int lastStage;
+        private List<Part> partList;
+        private double simpleTotalThrust;
+        private double stageStartMass;
+        private Vector3d stageStartCom;
+        private double stageTime;
+        private double stepEndMass;
+        private double stepStartMass;
+        private double totalStageActualThrust;
+        private double totalStageFlowRate;
+        private double totalStageIspFlowRate;
+        private double totalStageThrust;
+        private ForceAccumulator totalStageThrustForce;
+        private Vector3 vecActualThrust;
+        private Vector3 vecStageDeltaV;
+        private Vector3 vecThrust;
+        private double velocity;
         public String vesselName;
         public VesselType vesselType;
 
-        private double stageTime = 0d;
-        private Vector3 vecStageDeltaV;
-        private double simpleTotalThrust = 0d;
-        private double totalStageThrust = 0d;
-        private double totalStageActualThrust = 0d;
-        private Vector3 vecThrust;
-        private Vector3 vecActualThrust;
-        private double totalStageFlowRate = 0d;
-        private double totalStageIspFlowRate = 0d;
-        private double currentisp = 0d;
-        private double stageStartMass = 0d;
-        private double stepStartMass = 0d;
-        private double stepEndMass = 0d;
-
-        private double gravity = 0d;
-        private double atmosphere = 0d;
-        private double velocity = 0d;
-        private Stopwatch _timer = new Stopwatch();
-        private const double STD_GRAVITY = 9.81d;
-        private const double SECONDS_PER_DAY = 86400d;
-        
         public Simulation()
         {
             if (SimManager.logOutput)
+            {
                 MonoBehaviour.print("Simulation created");
+            }
+        }
+
+        private double ShipMass
+        {
+            get
+            {
+                double mass = 0d;
+
+                foreach (PartSim partSim in this.allParts)
+                {
+                    mass += partSim.GetMass();
+                }
+
+                return mass;
+            }
+        }
+
+        private Vector3d ShipCom
+        {
+            get
+            {
+                WeightedVectorAverager averager = new WeightedVectorAverager();
+
+                foreach (PartSim partSim in this.allParts)
+                {
+                    averager.Add(partSim.centerOfMass, partSim.GetMass());
+                }
+
+                return averager.Get();
+            }
         }
 
         // This function prepares the simulation by creating all the necessary data structures it will 
@@ -75,72 +119,78 @@ namespace Engineer.VesselSimulator
                 log.buf.AppendLine("PrepareSimulation started");
                 dumpTree = true;
             }
-            _timer.Start();
+            this._timer.Start();
 
             // Store the parameters in members for ease of access in other functions
-            partList = parts;
-            gravity = theGravity;
-            atmosphere = theAtmosphere;
-            velocity = theVelocity;
-            lastStage = Staging.lastStage;
+            this.partList = parts;
+            this.gravity = theGravity;
+            this.atmosphere = theAtmosphere;
+            this.velocity = theVelocity;
+            this.lastStage = Staging.lastStage;
             //MonoBehaviour.print("lastStage = " + lastStage);
 
             // Create the lists for our simulation parts
-            allParts = new List<PartSim>();
-            allFuelLines = new List<PartSim>();
-            drainingParts = new HashSet<PartSim>();
-            allEngines = new List<EngineSim>();
-            activeEngines = new List<EngineSim>();
-            drainingResources = new HashSet<int>();
+            this.allParts = new List<PartSim>();
+            this.allFuelLines = new List<PartSim>();
+            this.drainingParts = new HashSet<PartSim>();
+            this.allEngines = new List<EngineSim>();
+            this.activeEngines = new List<EngineSim>();
+            this.drainingResources = new HashSet<int>();
 
             // A dictionary for fast lookup of Part->PartSim during the preparation phase
             Dictionary<Part, PartSim> partSimLookup = new Dictionary<Part, PartSim>();
 
-            if (partList.Count > 0 && partList[0].vessel != null)
+            if (this.partList.Count > 0 && this.partList[0].vessel != null)
             {
-                vesselName = partList[0].vessel.vesselName;
-                vesselType = partList[0].vessel.vesselType;
+                this.vesselName = this.partList[0].vessel.vesselName;
+                this.vesselType = this.partList[0].vessel.vesselType;
             }
 
             // First we create a PartSim for each Part (giving each a unique id)
             int partId = 1;
-            foreach (Part part in partList)
+            foreach (Part part in this.partList)
             {
                 // If the part is already in the lookup dictionary then log it and skip to the next part
                 if (partSimLookup.ContainsKey(part))
                 {
                     if (log != null)
+                    {
                         log.buf.AppendLine("Part " + part.name + " appears in vessel list more than once");
+                    }
                     continue;
                 }
 
                 // Create the PartSim
-                PartSim partSim = new PartSim(part, partId, atmosphere, log);
+                PartSim partSim = new PartSim(part, partId, this.atmosphere, log);
 
                 // Add it to the Part lookup dictionary and the necessary lists
                 partSimLookup.Add(part, partSim);
-                allParts.Add(partSim);
+                this.allParts.Add(partSim);
                 if (partSim.isFuelLine)
-                    allFuelLines.Add(partSim);
+                {
+                    this.allFuelLines.Add(partSim);
+                }
                 if (partSim.isEngine)
-                    partSim.CreateEngineSims(allEngines, atmosphere, velocity, vectoredThrust, log);
+                {
+                    partSim.CreateEngineSims(this.allEngines, this.atmosphere, this.velocity, vectoredThrust, log);
+                }
 
                 partId++;
             }
 
-            UpdateActiveEngines();
+            this.UpdateActiveEngines();
 
             // Now that all the PartSims have been created we can do any set up that needs access to other parts
             // First we set up all the parent links
-            foreach (PartSim partSim in allParts)
+            foreach (PartSim partSim in this.allParts)
             {
                 partSim.SetupParent(partSimLookup, log);
             }
-            
+
             // Then, in the VAB/SPH, we add the parent of each fuel line to the fuelTargets list of their targets
             if (HighLogic.LoadedSceneIsEditor)
             {
-                foreach (PartSim partSim in allFuelLines)
+                foreach (PartSim partSim in this.allFuelLines)
                 {
                     if ((partSim.part as FuelLine).target != null)
                     {
@@ -148,92 +198,116 @@ namespace Engineer.VesselSimulator
                         if (partSimLookup.TryGetValue((partSim.part as FuelLine).target, out targetSim))
                         {
                             if (log != null)
+                            {
                                 log.buf.AppendLine("Fuel line target is " + targetSim.name + ":" + targetSim.partId);
+                            }
 
                             targetSim.fuelTargets.Add(partSim.parent);
                         }
                         else
                         {
                             if (log != null)
+                            {
                                 log.buf.AppendLine("No PartSim for fuel line target (" + partSim.part.partInfo.name + ")");
+                            }
                         }
                     }
                     else
                     {
                         if (log != null)
+                        {
                             log.buf.AppendLine("Fuel line target is null");
+                        }
                     }
                 }
             }
 
             //MonoBehaviour.print("SetupAttachNodes and count stages");
-            foreach (PartSim partSim in allParts)
+            foreach (PartSim partSim in this.allParts)
             {
                 partSim.SetupAttachNodes(partSimLookup, log);
-                if (partSim.decoupledInStage >= lastStage)
-                    lastStage = partSim.decoupledInStage + 1;
+                if (partSim.decoupledInStage >= this.lastStage)
+                {
+                    this.lastStage = partSim.decoupledInStage + 1;
+                }
             }
 
             // And finally release the Part references from all the PartSims
             //MonoBehaviour.print("ReleaseParts");
-            foreach (PartSim partSim in allParts)
+            foreach (PartSim partSim in this.allParts)
+            {
                 partSim.ReleasePart();
+            }
 
             // And dereference the core's part list
-            partList = null;
+            this.partList = null;
 
-            _timer.Stop();
+            this._timer.Stop();
             if (log != null)
             {
-                log.buf.AppendLine("PrepareSimulation: " + _timer.ElapsedMilliseconds + "ms");
+                log.buf.AppendLine("PrepareSimulation: " + this._timer.ElapsedMilliseconds + "ms");
                 log.Flush();
             }
 
             if (dumpTree)
-                Dump();
+            {
+                this.Dump();
+            }
 
             return true;
         }
 
-        
         // This function runs the simulation and returns a newly created array of Stage objects
         public Stage[] RunSimulation()
         {
             if (SimManager.logOutput)
+            {
                 MonoBehaviour.print("RunSimulation started");
-            _timer.Start();
+            }
+
+            this._timer.Start();
 
             LogMsg log = null;
             if (SimManager.logOutput)
+            {
                 log = new LogMsg();
+            }
 
             // Start with the last stage to simulate
             // (this is in a member variable so it can be accessed by AllowedToStage and ActivateStage)
-            currentStage = lastStage;
+            this.currentStage = this.lastStage;
 
             // Work out which engines would be active if just doing the staging and if this is different to the 
             // currently active engines then generate an extra stage
             // Loop through all the engines
             bool anyActive = false;
-            foreach (EngineSim engine in allEngines)
+            foreach (EngineSim engine in this.allEngines)
             {
                 if (log != null)
+                {
                     log.buf.AppendLine("Testing engine mod of " + engine.partSim.name + ":" + engine.partSim.partId);
+                }
                 bool bActive = engine.isActive;
-                bool bStage = (engine.partSim.inverseStage >= currentStage);
+                bool bStage = (engine.partSim.inverseStage >= this.currentStage);
                 if (log != null)
+                {
                     log.buf.AppendLine("bActive = " + bActive + "   bStage = " + bStage);
+                }
                 if (HighLogic.LoadedSceneIsFlight)
                 {
                     if (bActive)
+                    {
                         anyActive = true;
+                    }
                     if (bActive != bStage)
                     {
                         // If the active state is different to the state due to staging
                         if (log != null)
+                        {
                             log.buf.AppendLine("Need to do current active engines first");
+                        }
 
-                        doingCurrent = true;
+                        this.doingCurrent = true;
                     }
                 }
                 else
@@ -241,7 +315,9 @@ namespace Engineer.VesselSimulator
                     if (bStage)
                     {
                         if (log != null)
+                        {
                             log.buf.AppendLine("Marking as active");
+                        }
 
                         engine.isActive = true;
                     }
@@ -250,94 +326,124 @@ namespace Engineer.VesselSimulator
 
             // If we need to do current because of difference in engine activation and there actually are active engines
             // then we do the extra stage otherwise activate the next stage and don't treat it as current
-            if (doingCurrent && anyActive)
+            if (this.doingCurrent && anyActive)
             {
-                currentStage++;
+                this.currentStage++;
             }
             else
             {
-                ActivateStage();
-                doingCurrent = false;
+                this.ActivateStage();
+                this.doingCurrent = false;
             }
 
             // Create a list of lists of PartSims that prevent decoupling
-            List<List<PartSim>> dontStagePartsLists = BuildDontStageLists(log);
-            
+            List<List<PartSim>> dontStagePartsLists = this.BuildDontStageLists(log);
+
             if (log != null)
+            {
                 log.Flush();
+            }
 
             // Create the array of stages that will be returned
-            Stage[] stages = new Stage[currentStage + 1];
+            Stage[] stages = new Stage[this.currentStage + 1];
+
 
             // Loop through the stages
-            while (currentStage >= 0)
+            while (this.currentStage >= 0)
             {
                 if (log != null)
                 {
-                    log.buf.AppendLine("Simulating stage " + currentStage);
-                    log.buf.AppendLine("ShipMass = " + ShipMass);
+                    log.buf.AppendLine("Simulating stage " + this.currentStage);
+                    log.buf.AppendLine("ShipMass = " + this.ShipMass);
                     log.Flush();
-                    _timer.Reset();
-                    _timer.Start();
+                    this._timer.Reset();
+                    this._timer.Start();
                 }
 
                 // Update active engines and resource drains
-                UpdateResourceDrains();
+                this.UpdateResourceDrains();
 
                 // Create the Stage object for this stage
                 Stage stage = new Stage();
 
-                stageTime = 0d;
-                vecStageDeltaV = Vector3.zero;
-                stageStartMass = ShipMass;
-                stepStartMass = stageStartMass;
-                stepEndMass = 0;
+                this.stageTime = 0d;
+                this.vecStageDeltaV = Vector3.zero;
 
-                CalculateThrustAndISP();
+                this.stageStartMass = this.ShipMass;
+                this.stageStartCom = this.ShipCom;
+
+                this.stepStartMass = this.stageStartMass;
+                this.stepEndMass = 0;
+
+                this.CalculateThrustAndISP();
 
                 // Store various things in the Stage object
-                stage.thrust = totalStageThrust;
+                stage.thrust = this.totalStageThrust;
                 //MonoBehaviour.print("stage.thrust = " + stage.thrust);
-                stage.thrustToWeight = totalStageThrust / (stageStartMass * gravity);
+                stage.thrustToWeight = this.totalStageThrust / (this.stageStartMass * this.gravity);
                 stage.maxThrustToWeight = stage.thrustToWeight;
                 //MonoBehaviour.print("StageMass = " + stageStartMass);
                 //MonoBehaviour.print("Initial maxTWR = " + stage.maxThrustToWeight);
-                stage.actualThrust = totalStageActualThrust;
-                stage.actualThrustToWeight = totalStageActualThrust / (stageStartMass * gravity);
+                stage.actualThrust = this.totalStageActualThrust;
+                stage.actualThrustToWeight = this.totalStageActualThrust / (this.stageStartMass * this.gravity);
 
-                // Calculate the cost and mass of this stage and add all engines and tanks that are decoupled
-                // in the next stage to the dontStageParts list
-                foreach (PartSim partSim in allParts)
-                {
-                    if (partSim.decoupledInStage == currentStage - 1)
-                    {
-                        stage.cost += partSim.cost;
-                        stage.mass += partSim.GetStartMass();
-                        stage.baseMass += partSim.GetBaseMass();
+                // calculate torque and associates
+                stage.maxThrustTorque = this.totalStageThrustForce.TorqueAt(this.stageStartCom).magnitude;
+
+                // torque divided by thrust. imagine that all engines are at the end of a lever that tries to turn the ship.
+                // this numerical value, in meters, would represent the length of that lever.
+                double torqueLeverArmLength = (stage.thrust <= 0) ? 0 : stage.maxThrustTorque / stage.thrust;
+
+                // how far away are the engines from the CoM, actually?
+                double thrustDistance = (this.stageStartCom - this.totalStageThrustForce.GetAverageForceApplicationPoint()).magnitude;
+
+                // the combination of the above two values gives an approximation of the offset angle.
+                double sinThrustOffsetAngle = 0;
+                if (thrustDistance > 1e-7) {
+                    sinThrustOffsetAngle = torqueLeverArmLength / thrustDistance;
+                    if (sinThrustOffsetAngle > 1) {
+                        sinThrustOffsetAngle = 1;
                     }
                 }
 
-                dontStageParts = dontStagePartsLists[currentStage];
+                stage.thrustOffsetAngle = Math.Asin(sinThrustOffsetAngle) * 180 / Math.PI;
+
+                // Calculate the cost and mass of this stage and add all engines and tanks that are decoupled
+                // in the next stage to the dontStageParts list
+                foreach (PartSim partSim in this.allParts)
+                {
+                    if (partSim.decoupledInStage == this.currentStage - 1)
+                    {
+                        stage.cost += partSim.cost;
+                        stage.mass += partSim.GetStartMass();
+                    }
+                }
+
+                this.dontStageParts = dontStagePartsLists[this.currentStage];
 
                 if (log != null)
                 {
-                    log.buf.AppendLine("Stage setup took " + _timer.ElapsedMilliseconds + "ms");
+                    log.buf.AppendLine("Stage setup took " + this._timer.ElapsedMilliseconds + "ms");
 
-                    if (dontStageParts.Count > 0)
+                    if (this.dontStageParts.Count > 0)
                     {
                         log.buf.AppendLine("Parts preventing staging:");
-                        foreach (PartSim partSim in dontStageParts)
+                        foreach (PartSim partSim in this.dontStageParts)
+                        {
                             partSim.DumpPartToBuffer(log.buf, "");
+                        }
                     }
                     else
+                    {
                         log.buf.AppendLine("No parts preventing staging");
+                    }
 
                     log.Flush();
                 }
 
                 // Now we will loop until we are allowed to stage
                 int loopCounter = 0;
-                while (!AllowedToStage())
+                while (!this.AllowedToStage())
                 {
                     loopCounter++;
                     //MonoBehaviour.print("loop = " + loopCounter);
@@ -345,7 +451,7 @@ namespace Engineer.VesselSimulator
                     // Calculate how long each draining tank will take to drain and run for the minimum time
                     double resourceDrainTime = double.MaxValue;
                     PartSim partMinDrain = null;
-                    foreach (PartSim partSim in drainingParts)
+                    foreach (PartSim partSim in this.drainingParts)
                     {
                         double time = partSim.TimeToDrainResource();
                         if (time < resourceDrainTime)
@@ -356,36 +462,44 @@ namespace Engineer.VesselSimulator
                     }
 
                     if (log != null)
+                    {
                         MonoBehaviour.print("Drain time = " + resourceDrainTime + " (" + partMinDrain.name + ":" + partMinDrain.partId + ")");
+                    }
 
-                    foreach (PartSim partSim in drainingParts)
+                    foreach (PartSim partSim in this.drainingParts)
+                    {
                         partSim.DrainResources(resourceDrainTime);
+                    }
 
                     // Get the mass after draining
-                    stepEndMass = ShipMass;
-                    stageTime += resourceDrainTime;
+                    this.stepEndMass = this.ShipMass;
+                    this.stageTime += resourceDrainTime;
 
-                    double stepEndTWR = totalStageThrust / (stepEndMass * gravity);
+                    double stepEndTWR = this.totalStageThrust / (this.stepEndMass * this.gravity);
                     //MonoBehaviour.print("After drain mass = " + stepEndMass);
                     //MonoBehaviour.print("currentThrust = " + totalStageThrust);
                     //MonoBehaviour.print("currentTWR = " + stepEndTWR);
                     if (stepEndTWR > stage.maxThrustToWeight)
+                    {
                         stage.maxThrustToWeight = stepEndTWR;
+                    }
 
                     //MonoBehaviour.print("newMaxTWR = " + stage.maxThrustToWeight);
 
                     // If we have drained anything and the masses make sense then add this step's deltaV to the stage total
-                    if (resourceDrainTime > 0d && stepStartMass > stepEndMass && stepStartMass > 0d && stepEndMass > 0d)
-                        vecStageDeltaV += vecThrust * (float)((currentisp * STD_GRAVITY * Math.Log(stepStartMass / stepEndMass)) / simpleTotalThrust);
+                    if (resourceDrainTime > 0d && this.stepStartMass > this.stepEndMass && this.stepStartMass > 0d && this.stepEndMass > 0d)
+                    {
+                        this.vecStageDeltaV += this.vecThrust * (float)((this.currentisp * STD_GRAVITY * Math.Log(this.stepStartMass / this.stepEndMass)) / this.simpleTotalThrust);
+                    }
 
                     // Update the active engines and resource drains for the next step
-                    UpdateResourceDrains();
+                    this.UpdateResourceDrains();
 
                     // Recalculate the current thrust and isp for the next step
-                    CalculateThrustAndISP();
+                    this.CalculateThrustAndISP();
 
                     // Check if we actually changed anything
-                    if (stepStartMass == stepEndMass)
+                    if (this.stepStartMass == this.stepEndMass)
                     {
                         //MonoBehaviour.print("No change in mass");
                         break;
@@ -395,55 +509,65 @@ namespace Engineer.VesselSimulator
                     if (loopCounter == 1000)
                     {
                         MonoBehaviour.print("exceeded loop count");
-                        MonoBehaviour.print("stageStartMass = " + stageStartMass);
-                        MonoBehaviour.print("stepStartMass = " + stepStartMass);
-                        MonoBehaviour.print("StepEndMass   = " + stepEndMass);
+                        MonoBehaviour.print("stageStartMass = " + this.stageStartMass);
+                        MonoBehaviour.print("stepStartMass = " + this.stepStartMass);
+                        MonoBehaviour.print("StepEndMass   = " + this.stepEndMass);
+                        Logger.Log("exceeded loop count");
+                        Logger.Log("stageStartMass = " + this.stageStartMass);
+                        Logger.Log("stepStartMass = " + this.stepStartMass);
+                        Logger.Log("StepEndMass   = " + this.stepEndMass);
                         break;
                     }
 
                     // The next step starts at the mass this one ended at
-                    stepStartMass = stepEndMass;
+                    this.stepStartMass = this.stepEndMass;
                 }
 
                 // Store more values in the Stage object and stick it in the array
 
                 // Store the magnitude of the deltaV vector
-                stage.deltaV = vecStageDeltaV.magnitude;
-                
+                stage.deltaV = this.vecStageDeltaV.magnitude;
+                stage.resourceMass = this.stepStartMass - this.stepEndMass;
+
                 // Recalculate effective stage isp from the stage deltaV (flip the standard deltaV calculation around)
                 // Note: If the mass doesn't change then this is a divide by zero
-                if (stageStartMass != stepStartMass)
-                    stage.isp = stage.deltaV / (STD_GRAVITY * Math.Log(stageStartMass / stepStartMass));
+                if (this.stageStartMass != this.stepStartMass)
+                {
+                    stage.isp = stage.deltaV / (STD_GRAVITY * Math.Log(this.stageStartMass / this.stepStartMass));
+                }
                 else
+                {
                     stage.isp = 0;
+                }
 
                 // Zero stage time if more than a day (this should be moved into the window code)
-                stage.time = (stageTime < SECONDS_PER_DAY) ? stageTime : 0d;
-                stage.number = doingCurrent ? -1 : currentStage;                // Set the stage number to -1 if doing current engines
-                stages[currentStage] = stage;
+                stage.time = (this.stageTime < SECONDS_PER_DAY) ? this.stageTime : 0d;
+                stage.number = this.doingCurrent ? -1 : this.currentStage; // Set the stage number to -1 if doing current engines
+                stage.totalPartCount = this.allParts.Count;
+                stages[this.currentStage] = stage;
 
                 // Now activate the next stage
-                currentStage--;
-                doingCurrent = false;
+                this.currentStage--;
+                this.doingCurrent = false;
 
                 if (log != null)
                 {
                     // Log how long the stage took
-                    _timer.Stop();
-                    MonoBehaviour.print("Simulating stage took " + _timer.ElapsedMilliseconds + "ms");
+                    this._timer.Stop();
+                    MonoBehaviour.print("Simulating stage took " + this._timer.ElapsedMilliseconds + "ms");
                     stage.Dump();
-                    _timer.Reset();
-                    _timer.Start();
+                    this._timer.Reset();
+                    this._timer.Start();
                 }
 
                 // Activate the next stage
-                ActivateStage();
+                this.ActivateStage();
 
                 if (log != null)
                 {
                     // Log how long it took to activate
-                    _timer.Stop();
-                    MonoBehaviour.print("ActivateStage took " + _timer.ElapsedMilliseconds + "ms");
+                    this._timer.Stop();
+                    MonoBehaviour.print("ActivateStage took " + this._timer.ElapsedMilliseconds + "ms");
                 }
             }
 
@@ -455,9 +579,9 @@ namespace Engineer.VesselSimulator
                 {
                     stages[i].totalCost += stages[j].cost;
                     stages[i].totalMass += stages[j].mass;
-                    stages[i].totalBaseMass += stages[j].baseMass;
                     stages[i].totalDeltaV += stages[j].deltaV;
                     stages[i].totalTime += stages[j].time;
+                    stages[i].partCount = i > 0 ? stages[i].totalPartCount - stages[i - 1].totalPartCount : stages[i].totalPartCount;
                 }
                 // We also total up the deltaV for stage and all stages below
                 for (int j = i; j < stages.Length; j++)
@@ -468,13 +592,15 @@ namespace Engineer.VesselSimulator
                 // Zero the total time if the value will be huge (24 hours?) to avoid the display going weird
                 // (this should be moved into the window code)
                 if (stages[i].totalTime > SECONDS_PER_DAY)
+                {
                     stages[i].totalTime = 0d;
+                }
             }
 
             if (log != null)
             {
-                _timer.Stop();
-                MonoBehaviour.print("RunSimulation: " + _timer.ElapsedMilliseconds + "ms");
+                this._timer.Stop();
+                MonoBehaviour.print("RunSimulation: " + this._timer.ElapsedMilliseconds + "ms");
             }
 
             return stages;
@@ -483,22 +609,30 @@ namespace Engineer.VesselSimulator
         private List<List<PartSim>> BuildDontStageLists(LogMsg log)
         {
             if (log != null)
-                log.buf.AppendLine("Creating list with capacity of " + (currentStage + 1));
+            {
+                log.buf.AppendLine("Creating list with capacity of " + (this.currentStage + 1));
+            }
             List<List<PartSim>> lists = new List<List<PartSim>>();
-            for (int i = 0; i <= currentStage; i++)
+            for (int i = 0; i <= this.currentStage; i++)
+            {
                 lists.Add(new List<PartSim>());
+            }
 
-            foreach (PartSim partSim in allParts)
+            foreach (PartSim partSim in this.allParts)
             {
                 if (partSim.isEngine || !partSim.Resources.Empty)
                 {
                     if (log != null)
+                    {
                         log.buf.AppendLine(partSim.name + ":" + partSim.partId + " is engine or tank, decoupled = " + partSim.decoupledInStage);
+                    }
 
-                    if (partSim.decoupledInStage < -1 || partSim.decoupledInStage > currentStage - 1)
+                    if (partSim.decoupledInStage < -1 || partSim.decoupledInStage > this.currentStage - 1)
                     {
                         if (log != null)
+                        {
                             log.buf.AppendLine("decoupledInStage out of range");
+                        }
                     }
                     else
                     {
@@ -507,10 +641,12 @@ namespace Engineer.VesselSimulator
                 }
             }
 
-            for (int i = 1; i <= lastStage; i++ )
+            for (int i = 1; i <= this.lastStage; i++)
             {
                 if (lists[i].Count == 0)
+                {
                     lists[i] = lists[i - 1];
+                }
             }
 
             return lists;
@@ -519,47 +655,58 @@ namespace Engineer.VesselSimulator
         // This function simply rebuilds the active engines by testing the isActive flag of all the engines
         private void UpdateActiveEngines()
         {
-            activeEngines.Clear();
-            foreach (EngineSim engine in allEngines)
+            this.activeEngines.Clear();
+            foreach (EngineSim engine in this.allEngines)
             {
                 if (engine.isActive)
-                    activeEngines.Add(engine);
+                {
+                    this.activeEngines.Add(engine);
+                }
             }
         }
 
         private void CalculateThrustAndISP()
         {
             // Reset all the values
-            vecThrust = Vector3.zero;
-            vecActualThrust = Vector3.zero;
-            simpleTotalThrust = 0d;
-            totalStageThrust = 0d;
-            totalStageActualThrust = 0d;
-            totalStageFlowRate = 0d;
-            totalStageIspFlowRate = 0d;
+            this.vecThrust = Vector3.zero;
+            this.vecActualThrust = Vector3.zero;
+            this.simpleTotalThrust = 0d;
+            this.totalStageThrust = 0d;
+            this.totalStageActualThrust = 0d;
+            this.totalStageFlowRate = 0d;
+            this.totalStageIspFlowRate = 0d;
+            this.totalStageThrustForce = new ForceAccumulator();
 
             // Loop through all the active engines totalling the thrust, actual thrust and mass flow rates
             // The thrust is totalled as vectors
-            foreach (EngineSim engine in activeEngines)
+            foreach (EngineSim engine in this.activeEngines)
             {
-                simpleTotalThrust += engine.thrust;
-                vecThrust += ((float)engine.thrust * engine.thrustVec);
-                vecActualThrust += ((float)engine.actualThrust * engine.thrustVec);
+                this.simpleTotalThrust += engine.thrust;
+                this.vecThrust += ((float)engine.thrust * engine.thrustVec);
+                this.vecActualThrust += ((float)engine.actualThrust * engine.thrustVec);
 
-                totalStageFlowRate += engine.ResourceConsumptions.Mass;
-                totalStageIspFlowRate += engine.ResourceConsumptions.Mass * engine.isp;
+                this.totalStageFlowRate += engine.ResourceConsumptions.Mass;
+                this.totalStageIspFlowRate += engine.ResourceConsumptions.Mass * engine.isp;
+
+                foreach (AppliedForce f in engine.appliedForces) {
+                    this.totalStageThrustForce.AddForce(f);
+                }
             }
 
             //MonoBehaviour.print("vecThrust = " + vecThrust.ToString() + "   magnitude = " + vecThrust.magnitude);
 
-            totalStageThrust = vecThrust.magnitude;
-            totalStageActualThrust = vecActualThrust.magnitude;
+            this.totalStageThrust = this.vecThrust.magnitude;
+            this.totalStageActualThrust = this.vecActualThrust.magnitude;
 
             // Calculate the effective isp at this point
-            if (totalStageFlowRate > 0d && totalStageIspFlowRate > 0d)
-                currentisp = totalStageIspFlowRate / totalStageFlowRate;
+            if (this.totalStageFlowRate > 0d && this.totalStageIspFlowRate > 0d)
+            {
+                this.currentisp = this.totalStageIspFlowRate / this.totalStageFlowRate;
+            }
             else
-                currentisp = 0;
+            {
+                this.currentisp = 0;
+            }
         }
 
         // This function does all the hard work of working out which engines are burning, which tanks are being drained 
@@ -567,40 +714,46 @@ namespace Engineer.VesselSimulator
         private void UpdateResourceDrains()
         {
             // Update the active engines
-            UpdateActiveEngines();
-            
+            this.UpdateActiveEngines();
+
             // Empty the draining resources set
-            drainingResources.Clear();
+            this.drainingResources.Clear();
 
             // Reset the resource drains of all draining parts
-            foreach (PartSim partSim in drainingParts)
+            foreach (PartSim partSim in this.drainingParts)
+            {
                 partSim.ResourceDrains.Reset();
+            }
 
             // Empty the draining parts set
-            drainingParts.Clear();
+            this.drainingParts.Clear();
 
             // Loop through all the active engine modules
-            foreach (EngineSim engine in activeEngines)
+            foreach (EngineSim engine in this.activeEngines)
             {
                 // Set the resource drains for this engine
-                if (engine.SetResourceDrains(allParts, allFuelLines, drainingParts))
+                if (engine.SetResourceDrains(this.allParts, this.allFuelLines, this.drainingParts))
                 {
                     // If it is active then add the consumed resource types to the set
                     foreach (int type in engine.ResourceConsumptions.Types)
-                        drainingResources.Add(type);
+                    {
+                        this.drainingResources.Add(type);
+                    }
                 }
             }
 
             // Update the active engines again to remove any engines that have no fuel supply
-            UpdateActiveEngines();
+            this.UpdateActiveEngines();
 
             if (SimManager.logOutput)
             {
                 StringBuilder buffer = new StringBuilder(1024);
-                buffer.AppendFormat("Active engines = {0:d}\n", activeEngines.Count);
+                buffer.AppendFormat("Active engines = {0:d}\n", this.activeEngines.Count);
                 int i = 0;
-                foreach (EngineSim engine in activeEngines)
+                foreach (EngineSim engine in this.activeEngines)
+                {
                     engine.DumpEngineToBuffer(buffer, "Engine " + (i++) + ":");
+                }
                 MonoBehaviour.print(buffer);
             }
         }
@@ -613,31 +766,32 @@ namespace Engineer.VesselSimulator
             {
                 buffer = new StringBuilder(1024);
                 buffer.AppendLine("AllowedToStage");
-                buffer.AppendFormat("currentStage = {0:d}\n", currentStage);
+                buffer.AppendFormat("currentStage = {0:d}\n", this.currentStage);
             }
 
-            if (activeEngines.Count > 0)
+            if (this.activeEngines.Count > 0)
             {
-                foreach (PartSim partSim in dontStageParts)
+                foreach (PartSim partSim in this.dontStageParts)
                 {
                     if (SimManager.logOutput)
+                    {
                         partSim.DumpPartToBuffer(buffer, "Testing: ");
+                    }
                     //buffer.AppendFormat("isSepratron = {0}\n", partSim.isSepratron ? "true" : "false");
 
-                    if (!partSim.Resources.EmptyOf(drainingResources))
+                    if (!partSim.isSepratron && !partSim.Resources.EmptyOf(this.drainingResources))
                     {
                         if (SimManager.logOutput)
                         {
                             partSim.DumpPartToBuffer(buffer, "Decoupled part not empty => false: ");
                             MonoBehaviour.print(buffer);
                         }
-
                         return false;
                     }
 
                     if (partSim.isEngine)
                     {
-                        foreach (EngineSim engine in activeEngines)
+                        foreach (EngineSim engine in this.activeEngines)
                         {
                             if (engine.partSim == partSim)
                             {
@@ -651,10 +805,9 @@ namespace Engineer.VesselSimulator
                         }
                     }
                 }
-               
             }
 
-            if (currentStage == 0 && doingCurrent)
+            if (this.currentStage == 0 && this.doingCurrent)
             {
                 if (SimManager.logOutput)
                 {
@@ -678,91 +831,73 @@ namespace Engineer.VesselSimulator
         {
             // Build a set of all the parts that will be decoupled
             HashSet<PartSim> decoupledParts = new HashSet<PartSim>();
-            foreach (PartSim partSim in allParts)
+            foreach (PartSim partSim in this.allParts)
             {
-                if (partSim.decoupledInStage >= currentStage)
+                if (partSim.decoupledInStage >= this.currentStage)
+                {
                     decoupledParts.Add(partSim);
+                }
             }
 
             foreach (PartSim partSim in decoupledParts)
             {
                 // Remove it from the all parts list
-                allParts.Remove(partSim);
+                this.allParts.Remove(partSim);
                 if (partSim.isEngine)
                 {
                     // If it is an engine then loop through all the engine modules and remove all the ones from this engine part
-                    for (int i = allEngines.Count - 1; i >= 0; i--)
+                    for (int i = this.allEngines.Count - 1; i >= 0; i--)
                     {
-                        if (allEngines[i].partSim == partSim)
-                            allEngines.RemoveAt(i);
+                        if (this.allEngines[i].partSim == partSim)
+                        {
+                            this.allEngines.RemoveAt(i);
+                        }
                     }
                 }
                 // If it is a fuel line then remove it from the list of all fuel lines
                 if (partSim.isFuelLine)
-                    allFuelLines.Remove(partSim);
+                {
+                    this.allFuelLines.Remove(partSim);
+                }
             }
 
             // Loop through all the (remaining) parts
-            foreach (PartSim partSim in allParts)
+            foreach (PartSim partSim in this.allParts)
             {
                 // Ask the part to remove all the parts that are decoupled
                 partSim.RemoveAttachedParts(decoupledParts);
             }
 
             // Now we loop through all the engines and activate those that are ignited in this stage
-            foreach(EngineSim engine in allEngines)
+            foreach (EngineSim engine in this.allEngines)
             {
-                if (engine.partSim.inverseStage == currentStage)
+                if (engine.partSim.inverseStage == this.currentStage)
+                {
                     engine.isActive = true;
-            }
-        }
-
-        private double ShipStartMass
-        {
-            get
-            {
-                double mass = 0d;
-
-                foreach (PartSim partSim in allParts)
-                {
-                    mass += partSim.GetStartMass();
                 }
-
-                return mass;
-            }
-        }
-
-        private double ShipMass
-        {
-            get
-            {
-                double mass = 0d;
-
-                foreach (PartSim partSim in allParts)
-                {
-                    mass += partSim.GetMass();
-                }
-
-                return mass;
             }
         }
 
         public void Dump()
         {
             StringBuilder buffer = new StringBuilder(1024);
-            buffer.AppendFormat("Part count = {0:d}\n", allParts.Count);
+            buffer.AppendFormat("Part count = {0:d}\n", this.allParts.Count);
 
             // Output a nice tree view of the rocket
-            if (allParts.Count > 0)
+            if (this.allParts.Count > 0)
             {
-                PartSim root = allParts[0];
+                PartSim root = this.allParts[0];
                 while (root.parent != null)
+                {
                     root = root.parent;
+                }
 
                 if (root.hasVessel)
-                    buffer.AppendFormat("vesselName = '{0}'  vesselType = {1}\n", vesselName, SimManager.GetVesselTypeString(vesselType));
+                {
+                    buffer.AppendFormat("vesselName = '{0}'  vesselType = {1}\n", this.vesselName, SimManager.GetVesselTypeString(this.vesselType));
+                }
 
-                root.DumpPartToBuffer(buffer, "", allParts);
+                root.DumpPartToBuffer(buffer, "", this.allParts);
             }
 
             MonoBehaviour.print(buffer);

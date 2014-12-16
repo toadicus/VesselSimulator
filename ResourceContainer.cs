@@ -1,38 +1,59 @@
-﻿// Kerbal Engineer Redux
-// Author:  CYBUTEK
-// License: Attribution-NonCommercial-ShareAlike 3.0 Unported
+// 
+//     Kerbal Engineer Redux
+// 
+//     Copyright (C) 2014 CYBUTEK
+// 
+//     This program is free software: you can redistribute it and/or modify
+//     it under the terms of the GNU General Public License as published by
+//     the Free Software Foundation, either version 3 of the License, or
+//     (at your option) any later version.
+// 
+//     This program is distributed in the hope that it will be useful,
+//     but WITHOUT ANY WARRANTY; without even the implied warranty of
+//     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//     GNU General Public License for more details.
+// 
+//     You should have received a copy of the GNU General Public License
+//     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// 
 
-using System;
+#region Using Directives
+
 using System.Collections;
 using System.Collections.Generic;
 
-namespace Engineer.VesselSimulator
+using UnityEngine;
+
+#endregion
+
+namespace KerbalEngineer.VesselSimulator
 {
     public class ResourceContainer
     {
-        Hashtable resources = new Hashtable();
+        private Hashtable resources = new Hashtable();
 
         public double this[int type]
         {
             get
             {
-                if (resources.ContainsKey(type))
-                    return (double)resources[type];
+                if (this.resources.ContainsKey(type))
+                {
+                    return (double)this.resources[type];
+                }
 
                 return 0d;
             }
             set
             {
-                if (resources.ContainsKey(type))
-                    resources[type] = value;
+                if (this.resources.ContainsKey(type))
+                {
+                    this.resources[type] = value;
+                }
                 else
-                    resources.Add(type, value);
+                {
+                    this.resources.Add(type, value);
+                }
             }
-        }
-
-        public bool HasType(int type)
-        {
-            return resources.ContainsKey(type);
         }
 
         public List<int> Types
@@ -41,8 +62,10 @@ namespace Engineer.VesselSimulator
             {
                 List<int> types = new List<int>();
 
-                foreach (int key in resources.Keys)
+                foreach (int key in this.resources.Keys)
+                {
                     types.Add(key);
+                }
 
                 return types;
             }
@@ -54,8 +77,10 @@ namespace Engineer.VesselSimulator
             {
                 double mass = 0d;
 
-                foreach (double resource in resources.Values)
+                foreach (double resource in this.resources.Values)
+                {
                     mass += resource;
+                }
 
                 return mass;
             }
@@ -65,22 +90,31 @@ namespace Engineer.VesselSimulator
         {
             get
             {
-                foreach (int type in resources.Keys)
+                foreach (int type in this.resources.Keys)
                 {
-                    if ((double)resources[type] > SimManager.RESOURCE_MIN)
+                    if ((double)this.resources[type] > SimManager.RESOURCE_MIN)
+                    {
                         return false;
+                    }
                 }
 
                 return true;
             }
         }
 
+        public bool HasType(int type)
+        {
+            return this.resources.ContainsKey(type);
+        }
+
         public bool EmptyOf(HashSet<int> types)
         {
             foreach (int type in types)
             {
-                if (HasType(type) && (double)resources[type] > SimManager.RESOURCE_MIN)
+                if (this.HasType(type) && (double)this.resources[type] > SimManager.RESOURCE_MIN)
+                {
                     return false;
+                }
             }
 
             return true;
@@ -88,29 +122,33 @@ namespace Engineer.VesselSimulator
 
         public void Add(int type, double amount)
         {
-            if (resources.ContainsKey(type))
-                resources[type] = (double)resources[type] + amount;
+            if (this.resources.ContainsKey(type))
+            {
+                this.resources[type] = (double)this.resources[type] + amount;
+            }
             else
-                resources.Add(type, amount);
+            {
+                this.resources.Add(type, amount);
+            }
         }
 
         public void Reset()
         {
-            resources = new Hashtable();
+            this.resources = new Hashtable();
         }
 
         public void Debug()
         {
-            foreach (int key in resources.Keys)
+            foreach (int key in this.resources.Keys)
             {
-                UnityEngine.MonoBehaviour.print(" -> " + GetResourceName(key) + " = " + resources[key]);
+                MonoBehaviour.print(" -> " + GetResourceName(key) + " = " + this.resources[key]);
             }
         }
 
         public double GetResourceMass(int type)
         {
             double density = GetResourceDensity(type);
-            return density == 0d ? 0d : (double)resources[type] * density;
+            return density == 0d ? 0d : (double)this.resources[type] * density;
         }
 
         public static ResourceFlowMode GetResourceFlowMode(int type)

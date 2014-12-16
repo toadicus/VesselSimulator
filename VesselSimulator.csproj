@@ -79,6 +79,9 @@
     <Compile Include="EngineSim.cs" />
     <Compile Include="PartExtensions.cs" />
     <Compile Include="LogMsg.cs" />
+    <Compile Include="ForceAccumulator.cs" />
+    <Compile Include="Averager.cs" />
+    <Compile Include="Logger.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SimulationManager.cs" />
