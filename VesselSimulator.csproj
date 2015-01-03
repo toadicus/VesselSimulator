@@ -51,7 +51,7 @@
     <ConsolePause>false</ConsolePause>
     <CustomCommands>
       <CustomCommands>
-        <Command type="AfterBuild" command="cp -afv ${TargetFile} /opt/games/KSP_linux/GameData/VOID/Plugins/" />
+        <Command type="AfterBuild" command="cp -afv ${TargetFile} ${ProjectDir}/GameData/VOID/Plugins/" />
       </CustomCommands>
     </CustomCommands>
   </PropertyGroup>
@@ -64,7 +64,7 @@
     <ConsolePause>false</ConsolePause>
     <CustomCommands>
       <CustomCommands>
-        <Command type="AfterBuild" command="cp -afv ${TargetFile} /opt/games/KSP_linux/GameData/VOID/Plugins/" />
+        <Command type="AfterBuild" command="cp -afv ${TargetFile} ${ProjectDir}/GameData/VOID/Plugins/" />
       </CustomCommands>
     </CustomCommands>
   </PropertyGroup>
