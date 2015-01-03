@@ -23,7 +23,7 @@
     <ConsolePause>false</ConsolePause>
     <CustomCommands>
       <CustomCommands>
-        <Command type="AfterBuild" command="xcopy /Y ${TargetFile} ..\..\..\Games\KSP_win\GameData\VOID\Plugins\" />
+        <Command type="AfterBuild" command="xcopy /Y ${TargetFile} ${ProjectDir}\GameData\VOID\Plugins\" />
       </CustomCommands>
     </CustomCommands>
   </PropertyGroup>
@@ -36,7 +36,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <CustomCommands>
       <CustomCommands>
-        <Command type="AfterBuild" command="xcopy /Y ${TargetFile} ..\..\..\Games\KSP_win\GameData\VOID\Plugins\" />
+        <Command type="AfterBuild" command="xcopy /Y ${TargetFile} ${ProjectDir}\GameData\VOID\Plugins\" />
       </CustomCommands>
     </CustomCommands>
   </PropertyGroup>
