@@ -580,6 +580,7 @@ namespace KerbalEngineer.VesselSimulator
                     stages[i].totalCost += stages[j].cost;
                     stages[i].totalMass += stages[j].mass;
                     stages[i].totalDeltaV += stages[j].deltaV;
+                    stages[i].totalResourceMass += stages[j].resourceMass;
                     stages[i].totalTime += stages[j].time;
                     stages[i].partCount = i > 0 ? stages[i].totalPartCount - stages[i - 1].totalPartCount : stages[i].totalPartCount;
                 }

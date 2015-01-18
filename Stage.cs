@@ -48,6 +48,7 @@ namespace KerbalEngineer.VesselSimulator
         public int totalPartCount = 0;
         public int partCount = 0;
         public double resourceMass = 0.0;
+        public double totalResourceMass = 0.0;
         public double maxThrustTorque = 0f;
         public double thrustOffsetAngle = 0f;
 
