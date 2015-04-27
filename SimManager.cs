@@ -22,6 +22,7 @@ namespace KerbalEngineer.VesselSimulator
     #region Using Directives
 
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Reflection;
     using System.Threading;
@@ -84,7 +85,7 @@ namespace KerbalEngineer.VesselSimulator
 
         public static Stage[] Stages { get; private set; }
 
-        public static double Velocity { get; set; }
+        public static double Mach { get; set; }
 
         public static String failMessage { get; private set; }
 
@@ -350,13 +351,22 @@ namespace KerbalEngineer.VesselSimulator
                     timer.Start();
                 }
 
-                var parts = HighLogic.LoadedSceneIsEditor ? EditorLogic.fetch.ship.parts : FlightGlobals.ActiveVessel.Parts;
+                List<Part> parts;
+                if (HighLogic.LoadedSceneIsEditor)
+                {
+                    parts = EditorLogic.fetch.ship.parts;
+                }
+                else
+                {
+                    parts = FlightGlobals.ActiveVessel.Parts;
+                    Atmosphere = FlightGlobals.ActiveVessel.staticPressurekPa * PhysicsGlobals.KpaToAtmospheres;
+                }
 
                 // Create the Simulation object in this thread
                 var sim = new Simulation();
 
                 // This call doesn't ever fail at the moment but we'll check and return a sensible error for display
-                if (sim.PrepareSimulation(parts, Gravity, Atmosphere, Velocity, dumpTree, vectoredThrust))
+                if (sim.PrepareSimulation(parts, Gravity, Atmosphere, Mach, dumpTree, vectoredThrust))
                 {
                     ThreadPool.QueueUserWorkItem(RunSimulation, sim);
                 }

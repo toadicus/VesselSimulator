@@ -67,7 +67,8 @@ namespace KerbalEngineer.VesselSimulator
         private Vector3 vecActualThrust;
         private Vector3 vecStageDeltaV;
         private Vector3 vecThrust;
-        private double velocity;
+        private double mach;
+        private float maxMach;
         public String vesselName;
         public VesselType vesselType;
 
@@ -113,7 +114,7 @@ namespace KerbalEngineer.VesselSimulator
         // need during the simulation.  All required data is copied from the core game data structures 
         // so that the simulation itself can be run in a background thread without having issues with 
         // the core game changing the data while the simulation is running.
-        public bool PrepareSimulation(List<Part> parts, double theGravity, double theAtmosphere = 0, double theVelocity = 0, bool dumpTree = false, bool vectoredThrust = false)
+        public bool PrepareSimulation(List<Part> parts, double theGravity, double theAtmosphere = 0, double theMach = 0, bool dumpTree = false, bool vectoredThrust = false, bool fullThrust = false)
         {
             LogMsg log = null;
             if (SimManager.logOutput)
@@ -128,7 +129,7 @@ namespace KerbalEngineer.VesselSimulator
             this.partList = parts;
             this.gravity = theGravity;
             this.atmosphere = theAtmosphere;
-            this.velocity = theVelocity;
+            this.mach = theMach;
             this.lastStage = Staging.lastStage;
             //MonoBehaviour.print("lastStage = " + lastStage);
 
@@ -175,10 +176,15 @@ namespace KerbalEngineer.VesselSimulator
                 }
                 if (partSim.isEngine)
                 {
-                    partSim.CreateEngineSims(this.allEngines, this.atmosphere, this.velocity, vectoredThrust, log);
+                    partSim.CreateEngineSims(this.allEngines, this.atmosphere, this.mach, vectoredThrust, fullThrust, log);
                 }
 
                 partId++;
+            }
+
+            for (int i = 0; i < allEngines.Count; ++i)
+            {
+                maxMach = Mathf.Max(maxMach, allEngines[i].maxMach);
             }
 
             this.UpdateActiveEngines();
@@ -548,6 +554,7 @@ namespace KerbalEngineer.VesselSimulator
                 stage.time = (this.stageTime < SECONDS_PER_DAY) ? this.stageTime : 0d;
                 stage.number = this.doingCurrent ? -1 : this.currentStage; // Set the stage number to -1 if doing current engines
                 stage.totalPartCount = this.allParts.Count;
+                stage.maxMach = maxMach;
                 stages[this.currentStage] = stage;
 
                 // Now activate the next stage
