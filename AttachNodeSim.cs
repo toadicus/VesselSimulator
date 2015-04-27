@@ -1,4 +1,4 @@
-// 
+﻿// 
 //     Kerbal Engineer Redux
 // 
 //     Copyright (C) 2014 CYBUTEK
@@ -28,15 +28,35 @@ namespace KerbalEngineer.VesselSimulator
 {
     internal class AttachNodeSim
     {
+
+        private static readonly Pool<AttachNodeSim> pool = new Pool<AttachNodeSim>(Create, Reset);
+
         public PartSim attachedPartSim;
         public String id;
         public AttachNode.NodeType nodeType;
 
-        public AttachNodeSim(PartSim partSim, String newId, AttachNode.NodeType newNodeType)
+        private static AttachNodeSim Create()
         {
-            this.attachedPartSim = partSim;
-            this.nodeType = newNodeType;
-            this.id = newId;
+            return new AttachNodeSim();
+        }
+
+        public static AttachNodeSim New(PartSim partSim, String newId, AttachNode.NodeType newNodeType)
+        {
+            AttachNodeSim nodeSim = pool.Borrow();
+
+            nodeSim.attachedPartSim = partSim;
+            nodeSim.nodeType = newNodeType;
+            nodeSim.id = newId;
+
+            return nodeSim;
+        }
+
+        static private void Reset(AttachNodeSim attachNodeSim) { }
+
+
+        public void Release()
+        {
+            pool.Release(this);
         }
 
         public void DumpToBuffer(StringBuilder buffer)

@@ -82,6 +82,7 @@
     <Compile Include="ForceAccumulator.cs" />
     <Compile Include="Averager.cs" />
     <Compile Include="Logger.cs" />
+    <Compile Include="Pool.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SimulationManager.cs" />

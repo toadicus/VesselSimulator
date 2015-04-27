@@ -1,4 +1,4 @@
-// 
+﻿// 
 //     Kerbal Engineer Redux
 // 
 //     Copyright (C) 2014 CYBUTEK
@@ -33,7 +33,7 @@ namespace KerbalEngineer.VesselSimulator
     {
         #region Constants
 
-        public const double RESOURCE_MIN = 0.0001;
+        public const double RESOURCE_MIN = 0.0001;  // The game does not use that anymore but the sim goes mad if I set it to 0...
 
         #endregion
 
@@ -45,6 +45,7 @@ namespace KerbalEngineer.VesselSimulator
         public static bool vectoredThrust = false;
         private static readonly object locker = new object();
         private static readonly Stopwatch timer = new Stopwatch();
+        private static Simulation simulation = new Simulation();
 
         private static bool bRequested;
         private static bool bRunning;
@@ -60,6 +61,8 @@ namespace KerbalEngineer.VesselSimulator
         private static bool hasInstalledKIDS;
         private static MethodInfo KIDS_Utils_GetIspMultiplier;
         private static bool bKIDSThrustISP = false;
+        
+
         #endregion
 
         #region Delegates
@@ -80,11 +83,13 @@ namespace KerbalEngineer.VesselSimulator
 
         public static double Gravity { get; set; }
 
-        public static Stage LastStage { get; private set; }
+        public static Stage LastVacStage { get; private set; }
+        public static Stage LastAtmStage { get; private set; }
 
         public static Stage[] Stages { get; private set; }
+        public static Stage[] AtmStages { get; private set; }
 
-        public static double Velocity { get; set; }
+        public static double Mach { get; set; }
 
         public static String failMessage { get; private set; }
 
@@ -267,32 +272,39 @@ namespace KerbalEngineer.VesselSimulator
                 bRequested = false;
                 timer.Reset();
             }
-
+            //Profiler.BeginSample("SimManager.StartSimulation()");
             StartSimulation();
+            //Profiler.EndSample();
         }
 
         private static void ClearResults()
         {
             failMessage = "";
             Stages = null;
-            LastStage = null;
+            LastVacStage = null;
         }
 
         private static void RunSimulation(object simObject)
         {
+            Simulation sim = (Simulation)simObject;
+
             try
             {
-                Stages = (simObject as Simulation).RunSimulation();
+                //Profiler.BeginSample("SimManager.RunSimulation().vacSim");
+                
+                Stages = sim.RunSimulation();
+                //Profiler.EndSample();
                 if (Stages != null && Stages.Length > 0)
                 {
                     if (logOutput)
                     {
                         foreach (var stage in Stages)
                         {
+                            MonoBehaviour.print("VacStages");
                             stage.Dump();
                         }
                     }
-                    LastStage = Stages[Stages.Length - 1];
+                    LastVacStage = Stages[Stages.Length - 1];
                 }
             }
             catch (Exception e)
@@ -300,8 +312,9 @@ namespace KerbalEngineer.VesselSimulator
                 MonoBehaviour.print("Exception in RunSimulation: " + e);
                 Logger.Exception(e);
                 Stages = null;
-                LastStage = null;
+                LastVacStage = null;
                 failMessage = e.ToString();
+                sim.FreePooledObject();
             }
             lock (locker)
             {
@@ -352,13 +365,12 @@ namespace KerbalEngineer.VesselSimulator
 
                 var parts = HighLogic.LoadedSceneIsEditor ? EditorLogic.fetch.ship.parts : FlightGlobals.ActiveVessel.Parts;
 
-                // Create the Simulation object in this thread
-                var sim = new Simulation();
+                bool simPrepped = simulation.PrepareSimulation(parts, Gravity, Atmosphere, Mach, dumpTree, vectoredThrust, false);
 
                 // This call doesn't ever fail at the moment but we'll check and return a sensible error for display
-                if (sim.PrepareSimulation(parts, Gravity, Atmosphere, Velocity, dumpTree, vectoredThrust))
+                if (simPrepped)
                 {
-                    ThreadPool.QueueUserWorkItem(RunSimulation, sim);
+                    ThreadPool.QueueUserWorkItem(RunSimulation, simulation);
                 }
                 else
                 {
