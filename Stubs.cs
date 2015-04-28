@@ -25,7 +25,7 @@ namespace KerbalEngineer.Editor
 {
     public static class BuildAdvanced
     {
-        public static float Altitude
+        public static double Altitude
         {
             get;
             set;
