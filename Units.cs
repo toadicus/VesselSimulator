@@ -173,7 +173,7 @@ namespace KerbalEngineer.Helpers
 
         public static string ToTime(double value)
         {
-            return TimeFormatter.ConvertToString(value);
+            throw new NotImplementedException("ToTime method not implemented in this build of VesselSimulator.");
         }
 
         public static string ToTorque(double value)
