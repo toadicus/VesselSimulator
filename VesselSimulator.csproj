@@ -84,6 +84,7 @@
     <Compile Include="Logger.cs" />
     <Compile Include="Stubs.cs" />
     <Compile Include="Units.cs" />
+    <Compile Include="Pool.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ToadicusTools\ToadicusTools.csproj">
