@@ -32,27 +32,30 @@ namespace KerbalEngineer.VesselSimulator
 {
     using CompoundParts;
     using Extensions;
+    using Helpers;
 
     public class Simulation
     {
-        private const double STD_GRAVITY = 9.80665;
         private const double SECONDS_PER_DAY = 86400;
         private readonly Stopwatch _timer = new Stopwatch();
-        private List<EngineSim> activeEngines;
-        private List<EngineSim> allEngines;
-        private List<PartSim> allFuelLines;
-        private List<PartSim> allParts;
+        private List<EngineSim> activeEngines = new List<EngineSim>();
+        private List<EngineSim> allEngines = new List<EngineSim>();
+        private List<PartSim> allFuelLines = new List<PartSim>();
+        private List<PartSim> allParts = new List<PartSim>();
+        private Dictionary<Part, PartSim> partSimLookup = new Dictionary<Part, PartSim>();
         private double atmosphere;
         private int currentStage;
         private double currentisp;
         private bool doingCurrent;
-        private List<PartSim> dontStageParts;
-        private HashSet<PartSim> drainingParts;
-        private HashSet<int> drainingResources;
+        private List<PartSim> dontStageParts = new List<PartSim>();
+        List<List<PartSim>> dontStagePartsLists = new List<List<PartSim>>();
+        private HashSet<PartSim> drainingParts = new HashSet<PartSim>();
+        private HashSet<int> drainingResources = new HashSet<int>();
+        private HashSet<PartSim> decoupledParts = new HashSet<PartSim>();
         private double gravity;
 
         private int lastStage;
-        private List<Part> partList;
+        private List<Part> partList = new List<Part>();
         private double simpleTotalThrust;
         private double stageStartMass;
         private Vector3d stageStartCom;
@@ -63,7 +66,7 @@ namespace KerbalEngineer.VesselSimulator
         private double totalStageFlowRate;
         private double totalStageIspFlowRate;
         private double totalStageThrust;
-        private ForceAccumulator totalStageThrustForce;
+        private ForceAccumulator totalStageThrustForce = new ForceAccumulator();
         private Vector3 vecActualThrust;
         private Vector3 vecStageDeltaV;
         private Vector3 vecThrust;
@@ -71,6 +74,8 @@ namespace KerbalEngineer.VesselSimulator
         private float maxMach;
         public String vesselName;
         public VesselType vesselType;
+        private WeightedVectorAverager vectorAverager = new WeightedVectorAverager();
+        private static ModuleProceduralFairing moduleProceduralFairing;
 
         public Simulation()
         {
@@ -86,9 +91,8 @@ namespace KerbalEngineer.VesselSimulator
             {
                 double mass = 0d;
 
-                foreach (PartSim partSim in this.allParts)
-                {
-                    mass += partSim.GetMass();
+                for (int i = 0; i < allParts.Count; ++i) { 
+                    mass += allParts[i].GetMass(currentStage);
                 }
 
                 return mass;
@@ -99,14 +103,15 @@ namespace KerbalEngineer.VesselSimulator
         {
             get
             {
-                WeightedVectorAverager averager = new WeightedVectorAverager();
+                vectorAverager.Reset();
 
-                foreach (PartSim partSim in this.allParts)
+                for (int i = 0; i < allParts.Count; ++i)
                 {
-                    averager.Add(partSim.centerOfMass, partSim.GetMass());
+                    PartSim partSim = allParts[i];
+                    vectorAverager.Add(partSim.centerOfMass, partSim.GetMass(currentStage));
                 }
 
-                return averager.Get();
+                return vectorAverager.Get();
             }
         }
 
@@ -133,16 +138,20 @@ namespace KerbalEngineer.VesselSimulator
             this.lastStage = Staging.lastStage;
             //MonoBehaviour.print("lastStage = " + lastStage);
 
-            // Create the lists for our simulation parts
-            this.allParts = new List<PartSim>();
-            this.allFuelLines = new List<PartSim>();
-            this.drainingParts = new HashSet<PartSim>();
-            this.allEngines = new List<EngineSim>();
-            this.activeEngines = new List<EngineSim>();
-            this.drainingResources = new HashSet<int>();
+            // Clear the lists for our simulation parts
+            allParts.Clear();
+            allFuelLines.Clear();
+            drainingParts.Clear();
+            allEngines.Clear();
+            activeEngines.Clear();
+            drainingResources.Clear();
+
+            PartSim.ReleaseAll();
+            EngineSim.ReleaseAll();
+            AttachNodeSim.ReleaseAll();
 
             // A dictionary for fast lookup of Part->PartSim during the preparation phase
-            Dictionary<Part, PartSim> partSimLookup = new Dictionary<Part, PartSim>();
+            partSimLookup.Clear();
 
             if (this.partList.Count > 0 && this.partList[0].vessel != null)
             {
@@ -152,8 +161,10 @@ namespace KerbalEngineer.VesselSimulator
 
             // First we create a PartSim for each Part (giving each a unique id)
             int partId = 1;
-            foreach (Part part in this.partList)
+            for (int i = 0; i < partList.Count; ++i)
             {
+                Part part = partList[i];
+
                 // If the part is already in the lookup dictionary then log it and skip to the next part
                 if (partSimLookup.ContainsKey(part))
                 {
@@ -165,7 +176,7 @@ namespace KerbalEngineer.VesselSimulator
                 }
 
                 // Create the PartSim
-                PartSim partSim = new PartSim(part, partId, this.atmosphere, log);
+                PartSim partSim = PartSim.GetPoolObject().Initialise(part, partId, this.atmosphere, log);
 
                 // Add it to the Part lookup dictionary and the necessary lists
                 partSimLookup.Add(part, partSim);
@@ -199,8 +210,10 @@ namespace KerbalEngineer.VesselSimulator
             // Then, in the VAB/SPH, we add the parent of each fuel line to the fuelTargets list of their targets
             if (HighLogic.LoadedSceneIsEditor)
             {
-                foreach (PartSim partSim in this.allFuelLines)
+                for (int i = 0; i < allFuelLines.Count; ++i)
                 {
+                    PartSim partSim = allFuelLines[i];
+
                     CModuleFuelLine fuelLine = partSim.part.GetModule<CModuleFuelLine>();
                     if (fuelLine.target != null)
                     {
@@ -233,8 +246,10 @@ namespace KerbalEngineer.VesselSimulator
             }
 
             //MonoBehaviour.print("SetupAttachNodes and count stages");
-            foreach (PartSim partSim in this.allParts)
+            for (int i = 0; i < allParts.Count; ++i)
             {
+                PartSim partSim = allParts[i];
+
                 partSim.SetupAttachNodes(partSimLookup, log);
                 if (partSim.decoupledInStage >= this.lastStage)
                 {
@@ -244,9 +259,9 @@ namespace KerbalEngineer.VesselSimulator
 
             // And finally release the Part references from all the PartSims
             //MonoBehaviour.print("ReleaseParts");
-            foreach (PartSim partSim in this.allParts)
-            {
-                partSim.ReleasePart();
+            for (int i = 0; i < allParts.Count; ++i)
+            { 
+                allParts[i].ReleasePart();
             }
 
             // And dereference the core's part list
@@ -291,8 +306,10 @@ namespace KerbalEngineer.VesselSimulator
             // currently active engines then generate an extra stage
             // Loop through all the engines
             bool anyActive = false;
-            foreach (EngineSim engine in this.allEngines)
+            for (int i = 0; i < allEngines.Count; ++i)
             {
+                EngineSim engine = allEngines[i];
+
                 if (log != null)
                 {
                     log.buf.AppendLine("Testing engine mod of " + engine.partSim.name + ":" + engine.partSim.partId);
@@ -347,7 +364,7 @@ namespace KerbalEngineer.VesselSimulator
             }
 
             // Create a list of lists of PartSims that prevent decoupling
-            List<List<PartSim>> dontStagePartsLists = this.BuildDontStageLists(log);
+            BuildDontStageLists(log);
 
             if (log != null)
             {
@@ -356,7 +373,6 @@ namespace KerbalEngineer.VesselSimulator
 
             // Create the array of stages that will be returned
             Stage[] stages = new Stage[this.currentStage + 1];
-
 
             // Loop through the stages
             while (this.currentStage >= 0)
@@ -420,12 +436,19 @@ namespace KerbalEngineer.VesselSimulator
 
                 // Calculate the cost and mass of this stage and add all engines and tanks that are decoupled
                 // in the next stage to the dontStageParts list
-                foreach (PartSim partSim in this.allParts)
+                for (int i = 0; i < allParts.Count; ++i)
                 {
+                    PartSim partSim = allParts[i];
+
                     if (partSim.decoupledInStage == this.currentStage - 1)
                     {
                         stage.cost += partSim.cost;
                         stage.mass += partSim.GetStartMass();
+                    }
+
+                    if (partSim.hasVessel == false && partSim.isFairing && partSim.inverseStage == currentStage)
+                    {
+                        stage.mass += partSim.moduleMass;
                     }
                 }
 
@@ -499,7 +522,7 @@ namespace KerbalEngineer.VesselSimulator
                     // If we have drained anything and the masses make sense then add this step's deltaV to the stage total
                     if (resourceDrainTime > 0d && this.stepStartMass > this.stepEndMass && this.stepStartMass > 0d && this.stepEndMass > 0d)
                     {
-                        this.vecStageDeltaV += this.vecThrust * (float)((this.currentisp * STD_GRAVITY * Math.Log(this.stepStartMass / this.stepEndMass)) / this.simpleTotalThrust);
+                        this.vecStageDeltaV += this.vecThrust * (float)((this.currentisp * Units.GRAVITY * Math.Log(this.stepStartMass / this.stepEndMass)) / this.simpleTotalThrust);
                     }
 
                     // Update the active engines and resource drains for the next step
@@ -543,7 +566,7 @@ namespace KerbalEngineer.VesselSimulator
                 // Note: If the mass doesn't change then this is a divide by zero
                 if (this.stageStartMass != this.stepStartMass)
                 {
-                    stage.isp = stage.deltaV / (STD_GRAVITY * Math.Log(this.stageStartMass / this.stepStartMass));
+                    stage.isp = stage.deltaV / (Units.GRAVITY * Math.Log(this.stageStartMass / this.stepStartMass));
                 }
                 else
                 {
@@ -618,20 +641,30 @@ namespace KerbalEngineer.VesselSimulator
             return stages;
         }
 
-        private List<List<PartSim>> BuildDontStageLists(LogMsg log)
+        private void BuildDontStageLists(LogMsg log)
         {
             if (log != null)
             {
                 log.buf.AppendLine("Creating list with capacity of " + (this.currentStage + 1));
             }
-            List<List<PartSim>> lists = new List<List<PartSim>>();
+
+            dontStagePartsLists.Clear();
             for (int i = 0; i <= this.currentStage; i++)
             {
-                lists.Add(new List<PartSim>());
+                if (i < dontStagePartsLists.Count)
+                {
+                    dontStagePartsLists[i].Clear();
+                }
+                else
+                {
+                    dontStagePartsLists.Add(new List<PartSim>());
+                }
             }
 
-            foreach (PartSim partSim in this.allParts)
+            for (int i = 0; i < allParts.Count; ++i)
             {
+                PartSim partSim = allParts[i];
+
                 if (partSim.isEngine || !partSim.Resources.Empty)
                 {
                     if (log != null)
@@ -648,28 +681,28 @@ namespace KerbalEngineer.VesselSimulator
                     }
                     else
                     {
-                        lists[partSim.decoupledInStage + 1].Add(partSim);
+                        dontStagePartsLists[partSim.decoupledInStage + 1].Add(partSim);
                     }
                 }
             }
 
             for (int i = 1; i <= this.lastStage; i++)
             {
-                if (lists[i].Count == 0)
+                if (dontStagePartsLists[i].Count == 0)
                 {
-                    lists[i] = lists[i - 1];
+                    dontStagePartsLists[i] = dontStagePartsLists[i - 1];
                 }
             }
-
-            return lists;
         }
 
         // This function simply rebuilds the active engines by testing the isActive flag of all the engines
         private void UpdateActiveEngines()
         {
             this.activeEngines.Clear();
-            foreach (EngineSim engine in this.allEngines)
+            for (int i = 0; i < allEngines.Count; ++i)
             {
+                EngineSim engine = allEngines[i];
+
                 if (engine.isActive)
                 {
                     this.activeEngines.Add(engine);
@@ -687,12 +720,14 @@ namespace KerbalEngineer.VesselSimulator
             this.totalStageActualThrust = 0d;
             this.totalStageFlowRate = 0d;
             this.totalStageIspFlowRate = 0d;
-            this.totalStageThrustForce = new ForceAccumulator();
+            this.totalStageThrustForce.Reset();
 
             // Loop through all the active engines totalling the thrust, actual thrust and mass flow rates
             // The thrust is totalled as vectors
-            foreach (EngineSim engine in this.activeEngines)
+            for (int i = 0; i < activeEngines.Count; ++i)
             {
+                EngineSim engine = activeEngines[i];
+
                 this.simpleTotalThrust += engine.thrust;
                 this.vecThrust += ((float)engine.thrust * engine.thrustVec);
                 this.vecActualThrust += ((float)engine.actualThrust * engine.thrustVec);
@@ -700,8 +735,9 @@ namespace KerbalEngineer.VesselSimulator
                 this.totalStageFlowRate += engine.ResourceConsumptions.Mass;
                 this.totalStageIspFlowRate += engine.ResourceConsumptions.Mass * engine.isp;
 
-                foreach (AppliedForce f in engine.appliedForces) {
-                    this.totalStageThrustForce.AddForce(f);
+                for (int j = 0; j < engine.appliedForces.Count; ++j)
+                {
+                    this.totalStageThrustForce.AddForce(engine.appliedForces[j]);
                 }
             }
 
@@ -741,15 +777,17 @@ namespace KerbalEngineer.VesselSimulator
             this.drainingParts.Clear();
 
             // Loop through all the active engine modules
-            foreach (EngineSim engine in this.activeEngines)
+            for (int i = 0; i < activeEngines.Count; ++i)
             {
+                EngineSim engine = activeEngines[i];
+
                 // Set the resource drains for this engine
                 if (engine.SetResourceDrains(this.allParts, this.allFuelLines, this.drainingParts))
                 {
                     // If it is active then add the consumed resource types to the set
-                    foreach (int type in engine.ResourceConsumptions.Types)
-                    {
-                        this.drainingResources.Add(type);
+                    for (int j = 0; j < engine.ResourceConsumptions.Types.Count; ++j)
+                    { 
+                        drainingResources.Add(engine.ResourceConsumptions.Types[j]);
                     }
                 }
             }
@@ -783,8 +821,10 @@ namespace KerbalEngineer.VesselSimulator
 
             if (this.activeEngines.Count > 0)
             {
-                foreach (PartSim partSim in this.dontStageParts)
+                for (int i = 0; i < dontStageParts.Count; ++i)
                 {
+                    PartSim partSim = dontStageParts[i];
+
                     if (SimManager.logOutput)
                     {
                         partSim.DumpPartToBuffer(buffer, "Testing: ");
@@ -803,8 +843,10 @@ namespace KerbalEngineer.VesselSimulator
 
                     if (partSim.isEngine)
                     {
-                        foreach (EngineSim engine in this.activeEngines)
+                        for (int j = 0; j < activeEngines.Count; ++j)
                         {
+                            EngineSim engine = activeEngines[j];
+
                             if (engine.partSim == partSim)
                             {
                                 if (SimManager.logOutput)
@@ -842,9 +884,11 @@ namespace KerbalEngineer.VesselSimulator
         private void ActivateStage()
         {
             // Build a set of all the parts that will be decoupled
-            HashSet<PartSim> decoupledParts = new HashSet<PartSim>();
-            foreach (PartSim partSim in this.allParts)
+            decoupledParts.Clear();
+            for (int i = 0; i < allParts.Count; ++i)
             {
+                PartSim partSim = allParts[i];
+
                 if (partSim.decoupledInStage >= this.currentStage)
                 {
                     decoupledParts.Add(partSim);
@@ -874,15 +918,15 @@ namespace KerbalEngineer.VesselSimulator
             }
 
             // Loop through all the (remaining) parts
-            foreach (PartSim partSim in this.allParts)
-            {
+            for (int i = 0; i < allParts.Count; ++i) { 
                 // Ask the part to remove all the parts that are decoupled
-                partSim.RemoveAttachedParts(decoupledParts);
+                allParts[i].RemoveAttachedParts(decoupledParts);
             }
 
             // Now we loop through all the engines and activate those that are ignited in this stage
-            foreach (EngineSim engine in this.allEngines)
+            for (int i = 0; i < allEngines.Count; ++i)
             {
+                EngineSim engine = allEngines[i];
                 if (engine.partSim.inverseStage == this.currentStage)
                 {
                     engine.isActive = true;
