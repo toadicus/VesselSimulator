@@ -102,7 +102,10 @@ namespace KerbalEngineer.VesselSimulator
 
             foreach (var assembly in AssemblyLoader.loadedAssemblies)
             {
-                MonoBehaviour.print("Assembly:" + assembly.assembly);
+                if (SimManager.logOutput)
+                {
+                    MonoBehaviour.print("Assembly:" + assembly.assembly);
+                }
 
                 var name = assembly.assembly.ToString().Split(',')[0];
 
