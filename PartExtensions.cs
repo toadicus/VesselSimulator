@@ -17,19 +17,17 @@
 //     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 
 
-#region Using Directives
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-#endregion
 
 namespace KerbalEngineer.Extensions
 {
     public static class PartExtensions
     {
-        #region Methods: public
+        //private static Part cachePart;
+        //private static PartModule cachePartModule;
+        //private static PartResource cachePartResource;
 
         /// <summary>
         ///     Gets whether the part contains a specific resource.
@@ -52,7 +50,8 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool EngineHasFuel(this Part part)
         {
-            if (part.HasModule<ModuleEngines>())
+            PartModule cachePartModule = GetModule<ModuleEngines>(part);
+            if (cachePartModule != null)
             {
                 return part.GetModuleEngines().getFlameoutState;
             }
@@ -81,11 +80,27 @@ namespace KerbalEngineer.Extensions
         }
 
         /// <summary>
+        ///     Gets the cost of the part modules
+        ///     Same as stock but without mem allocation
+        /// </summary>
+        public static double GetModuleCostsNoAlloc(this Part part, float defaultCost)
+        {
+            float cost = 0f;
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                PartModule pm = part.Modules[i];
+                if (pm is IPartCostModifier)
+                    cost += (pm as IPartCostModifier).GetModuleCost(defaultCost);
+            }
+            return cost;
+        }
+
+        /// <summary>
         ///     Gets the cost of the part including resources.
         /// </summary>
         public static double GetCostWet(this Part part)
         {
-            return part.partInfo.cost - GetResourceCostInverted(part) + part.GetModuleCosts(0.0f);
+            return part.partInfo.cost - GetResourceCostInverted(part) + part.GetModuleCostsNoAlloc(0.0f); // part.GetModuleCosts allocate 44B per call. 
         }
 
         /// <summary>
@@ -101,7 +116,8 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetMaxThrust(this Part part)
         {
-            if (part.HasModule<ModuleEngines>())
+            PartModule cachePartModule = GetModule<ModuleEngines>(part);
+            if (cachePartModule != null)
             {
                 return part.GetModuleEngines().maxThrust;
             }
@@ -122,7 +138,13 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static T GetModule<T>(this Part part) where T : PartModule
         {
-            return part.Modules.OfType<T>().FirstOrDefault();
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                PartModule pm = part.Modules[i];
+                if (pm is T)
+                    return (T)pm;
+            }
+            return null;
         }
 
         /// <summary>
@@ -218,7 +240,8 @@ namespace KerbalEngineer.Extensions
 
         public static ProtoModuleDecoupler GetProtoModuleDecoupler(this Part part)
         {
-            if (HasModule<ModuleDecouple>(part))
+            PartModule cachePartModule = GetModule<ModuleDecouple>(part);
+            if (cachePartModule == null)
             {
                 return new ProtoModuleDecoupler(GetModule<ModuleDecouple>(part));
             }
@@ -234,7 +257,8 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static ProtoModuleEngine GetProtoModuleEngine(this Part part)
         {
-            if (HasModule<ModuleEngines>(part))
+            PartModule cachePartModule = GetModule<ModuleEngines>(part);
+            if (cachePartModule != null)
             {
                 return new ProtoModuleEngine(GetModule<ModuleEngines>(part));
             }
@@ -254,7 +278,13 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetResourceCost(this Part part)
         {
-            return part.Resources.list.Sum(r => r.amount * r.info.unitCost);
+            double cost = 0.0;
+            for (int i = 0; i < part.Resources.list.Count; ++i)
+            {
+                PartResource cachePartResource = part.Resources.list[i];
+                cost = cost + (cachePartResource.amount * cachePartResource.info.unitCost);
+            }
+            return cost;
         }
 
         /// <summary>
@@ -262,7 +292,13 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetResourceCostInverted(this Part part)
         {
-            return part.Resources.list.Sum(r => (r.maxAmount - r.amount) * r.info.unitCost);
+            double sum = 0;
+            for (int i = 0; i < part.Resources.list.Count; i++)
+            {
+                PartResource r = part.Resources.list[i];
+                sum += (r.maxAmount - r.amount) * r.info.unitCost;
+            }
+            return sum;
         }
 
         /// <summary>
@@ -270,7 +306,13 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetResourceCostMax(this Part part)
         {
-            return part.Resources.list.Sum(r => r.maxAmount * r.info.unitCost);
+            double cost = 0.0;
+            for (int i = 0; i < part.Resources.list.Count; ++i)
+            {
+                PartResource cachePartResource = part.Resources.list[i];
+                cost = cost + (cachePartResource.maxAmount * cachePartResource.info.unitCost);
+            }
+            return cost;
         }
 
         /// <summary>
@@ -278,7 +320,8 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetSpecificImpulse(this Part part, float atmosphere)
         {
-            if (part.HasModule<ModuleEngines>())
+            PartModule cachePartModule = GetModule<ModuleEngines>(part);
+            if (cachePartModule != null)
             {
                 return part.GetModuleEngines().atmosphereCurve.Evaluate(atmosphere);
             }
@@ -307,7 +350,12 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool HasModule<T>(this Part part) where T : PartModule
         {
-            return part.Modules.OfType<T>().Any();
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                if (part.Modules[i] is T)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -315,7 +363,13 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool HasModule<T>(this Part part, Func<T, bool> predicate) where T : PartModule
         {
-            return part.Modules.OfType<T>().Any(predicate);
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                PartModule pm = part.Modules[i];
+                if (pm is T && predicate(pm as T))
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -339,7 +393,8 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool HasOneShotAnimation(this Part part)
         {
-            return part.HasModule<ModuleAnimateGeneric>() && part.GetModule<ModuleAnimateGeneric>().isOneShot;
+            PartModule cachePartModule = GetModule<ModuleAnimateGeneric>(part);
+            return cachePartModule != null && (cachePartModule as ModuleAnimateGeneric).isOneShot;
         }
 
         /// <summary>
@@ -419,13 +474,13 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool IsPrimary(this Part part, List<Part> partsList, PartModule module)
         {
-            foreach (var vesselPart in partsList)
+            for (int i = 0; i < partsList.Count; i++)
             {
+                var vesselPart = partsList[i];
                 if (!vesselPart.HasModule(module.ClassID))
                 {
                     continue;
                 }
-
                 if (vesselPart == part)
                 {
                     return true;
@@ -462,22 +517,12 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool IsSolidRocket(this Part part)
         {
-            return part.HasModule<ModuleEngines>() && part.GetModuleEngines().throttleLocked;
+            return (part.HasModule<ModuleEngines>() && part.GetModuleEngines().throttleLocked) || (part.HasModule<ModuleEnginesFX>() && part.GetModuleEnginesFx().throttleLocked);
         }
-
-        #endregion
-
-        #region Nested Type: ProtoModuleDecoupler
 
         public class ProtoModuleDecoupler
         {
-            #region Fields
-
             private readonly PartModule module;
-
-            #endregion
-
-            #region Constructors
 
             public ProtoModuleDecoupler(PartModule module)
             {
@@ -493,16 +538,8 @@ namespace KerbalEngineer.Extensions
                 }
             }
 
-            #endregion
-
-            #region Properties
-
             public double EjectionForce { get; private set; }
             public bool IsOmniDecoupler { get; private set; }
-
-            #endregion
-
-            #region Methods: private
 
             private void SetModuleAnchoredDecoupler()
             {
@@ -526,23 +563,11 @@ namespace KerbalEngineer.Extensions
                 this.EjectionForce = decoupler.ejectionForce;
                 this.IsOmniDecoupler = decoupler.isOmniDecoupler;
             }
-
-            #endregion
         }
-
-        #endregion
-
-        #region Nested Type: ProtoModuleEngine
 
         public class ProtoModuleEngine
         {
-            #region Fields
-
             private readonly PartModule module;
-
-            #endregion
-
-            #region Constructors
 
             public ProtoModuleEngine(PartModule module)
             {
@@ -558,17 +583,9 @@ namespace KerbalEngineer.Extensions
                 }
             }
 
-            #endregion
-
-            #region Properties
-
             public double MaximumThrust { get; private set; }
             public double MinimumThrust { get; private set; }
             public List<Propellant> Propellants { get; private set; }
-
-            #endregion
-
-            #region Methods: public
 
             public float GetSpecificImpulse(float atmosphere)
             {
@@ -582,10 +599,6 @@ namespace KerbalEngineer.Extensions
                 }
                 return 0.0f;
             }
-
-            #endregion
-
-            #region Methods: private
 
             private void SetModuleEngines()
             {
@@ -612,10 +625,6 @@ namespace KerbalEngineer.Extensions
                 this.MinimumThrust = engine.minThrust;
                 this.Propellants = engine.propellants;
             }
-
-            #endregion
         }
-
-        #endregion
     }
 }
