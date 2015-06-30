@@ -67,6 +67,7 @@
         <Command type="AfterBuild" command="cp -afv ${TargetFile} ${ProjectDir}/GameData/VOID/Plugins/" />
       </CustomCommands>
     </CustomCommands>
+    <NoWarn>0169</NoWarn>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
