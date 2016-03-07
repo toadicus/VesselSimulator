@@ -20,7 +20,6 @@
 using System;
 using System.Collections.Generic;
 using KerbalEngineer.VesselSimulator;
-using UnityEngine;
 
 namespace KerbalEngineer
 {
@@ -29,8 +28,8 @@ namespace KerbalEngineer
     {
         private static readonly Pool<AppliedForce> pool = new Pool<AppliedForce>(Create, Reset);
 
-        public Vector3 vector;
-        public Vector3 applicationPoint;
+        public Vector3d vector;
+        public Vector3d applicationPoint;
 
         static private AppliedForce Create()
         {
@@ -39,7 +38,7 @@ namespace KerbalEngineer
 
         static private void Reset(AppliedForce appliedForce) { }
 
-        static public AppliedForce New(Vector3 vector, Vector3 applicationPoint)
+        static public AppliedForce New(Vector3d vector, Vector3d applicationPoint)
         {
             AppliedForce force = pool.Borrow();
             force.vector = vector;
@@ -69,22 +68,22 @@ namespace KerbalEngineer
 	public class ForceAccumulator
 	{
 	    // Total force.
-		private Vector3 totalForce = Vector3.zero;
+		private Vector3d totalForce = Vector3d.zero;
 		// Torque needed to compensate if force were applied at origin.
-		private Vector3 totalZeroOriginTorque = Vector3.zero;
+		private Vector3d totalZeroOriginTorque = Vector3d.zero;
 
 		// Weighted average of force application points.
 		private WeightedVectorAverager avgApplicationPoint = new WeightedVectorAverager();
 
 		// Feed an force to the accumulator.
-		public void AddForce(Vector3 applicationPoint, Vector3 force)
+		public void AddForce(Vector3d applicationPoint, Vector3d force)
 		{
 			totalForce += force;
-			totalZeroOriginTorque += Vector3.Cross(applicationPoint, force);
+			totalZeroOriginTorque += Vector3d.Cross(applicationPoint, force);
 			avgApplicationPoint.Add(applicationPoint, force.magnitude);
 		}
 
-        public Vector3 GetAverageForceApplicationPoint() {
+        public Vector3d GetAverageForceApplicationPoint() {
             return avgApplicationPoint.Get();
         }
 
@@ -93,38 +92,38 @@ namespace KerbalEngineer
         }
 
 		// Residual torque for given force application point.
-		public Vector3 TorqueAt(Vector3 origin)
+		public Vector3d TorqueAt(Vector3d origin)
 		{
-			return totalZeroOriginTorque - Vector3.Cross(origin, totalForce);
+			return totalZeroOriginTorque - Vector3d.Cross(origin, totalForce);
 		}
 
         // Total force vector.
-        public Vector3 GetTotalForce()
+        public Vector3d GetTotalForce()
         {
             return totalForce;
         }
 
         // Returns the minimum-residual-torque force application point that is closest to origin.
         // Note that TorqueAt(GetMinTorquePos()) is always parallel to totalForce.
-        public Vector3 GetMinTorqueForceApplicationPoint(Vector3 origin)
+        public Vector3d GetMinTorqueForceApplicationPoint(Vector3d origin)
         {
             double fmag = totalForce.sqrMagnitude;
             if (fmag <= 0) {
                 return origin;
             }
 
-            return origin + Vector3.Cross(totalForce, TorqueAt(origin)) / (float)fmag;
+            return origin + Vector3d.Cross(totalForce, TorqueAt(origin)) / fmag;
         }
 
-        public Vector3 GetMinTorqueForceApplicationPoint()
+        public Vector3d GetMinTorqueForceApplicationPoint()
         {
             return GetMinTorqueForceApplicationPoint(avgApplicationPoint.Get());
         }
 
 	    public void Reset()
 	    {
-	        totalForce = Vector3.zero;
-	        totalZeroOriginTorque = Vector3.zero;
+	        totalForce = Vector3d.zero;
+	        totalZeroOriginTorque = Vector3d.zero;
             avgApplicationPoint.Reset();
 	    }
 	}
