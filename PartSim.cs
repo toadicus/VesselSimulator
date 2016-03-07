@@ -37,7 +37,7 @@ namespace KerbalEngineer.VesselSimulator
         public double realMass;
         public double baseMass;
         public double baseMassForCoM;
-        public Vector3d centerOfMass;
+        public Vector3 centerOfMass;
         public double baseCost;
         public int decoupledInStage;
         public bool fuelCrossFeed;

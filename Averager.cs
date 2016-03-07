@@ -18,49 +18,50 @@
 // 
 
 using System;
+using UnityEngine;
 
 namespace KerbalEngineer
 { 
     public class VectorAverager
     {
-        private Vector3d sum = Vector3d.zero;
+        private Vector3 sum = Vector3.zero;
         private uint count = 0;
 
-        public void Add(Vector3d v) {
+        public void Add(Vector3 v) {
             sum += v;
             count += 1;
         }
 
-        public Vector3d Get() {
+        public Vector3 Get() {
             if (count > 0) {
                 return sum / count;
             } else {
-                return Vector3d.zero;
+                return Vector3.zero;
             }
         }
 
         public void Reset()
         {
-            sum = Vector3d.zero;
+            sum = Vector3.zero;
             count = 0;
         }
     }
 
     public class WeightedVectorAverager
     {
-        private Vector3d sum = Vector3d.zero;
+        private Vector3 sum = Vector3.zero;
         private double totalweight = 0;
 
-        public void Add(Vector3d v, double weight) {
-            sum += v * weight;
+        public void Add(Vector3 v, double weight) {
+            sum += v * (float)weight;
             totalweight += weight;
         }
 
-        public Vector3d Get() {
+        public Vector3 Get() {
             if (totalweight > 0) {
-                return sum / totalweight;
+                return sum / (float)totalweight;
             } else {
-                return Vector3d.zero;
+                return Vector3.zero;
             }
         }
 
@@ -70,7 +71,7 @@ namespace KerbalEngineer
 
         public void Reset()
         {
-            sum = Vector3d.zero;
+            sum = Vector3.zero;
             totalweight = 0.0;
         }
     }

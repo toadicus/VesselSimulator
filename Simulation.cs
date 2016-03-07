@@ -59,7 +59,7 @@ namespace KerbalEngineer.VesselSimulator
         private List<Part> partList = new List<Part>();
         private double simpleTotalThrust;
         private double stageStartMass;
-        private Vector3d stageStartCom;
+        private Vector3 stageStartCom;
         private double stageTime;
         private double stepEndMass;
         private double stepStartMass;
@@ -110,7 +110,7 @@ namespace KerbalEngineer.VesselSimulator
             }
         }
 
-        private Vector3d ShipCom
+        private Vector3 ShipCom
         {
             get
             {
