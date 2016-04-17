@@ -119,7 +119,6 @@ namespace KerbalEngineer.VesselSimulator
             partSim.isFuelLine = partSim.part.HasModule<CModuleFuelLine>();
             partSim.isFuelTank = partSim.part is FuelTank;
             partSim.isSepratron = partSim.IsSepratron();
-            partSim.isFairing = partSim.IsFairing(partSim.part);
             partSim.inverseStage = partSim.part.inverseStage;
             //MonoBehaviour.print("inverseStage = " + inverseStage);
 
@@ -145,13 +144,13 @@ namespace KerbalEngineer.VesselSimulator
             else
             {
                 partSim.realMass = partSim.part.mass;
-                if (log != null) log.buf.AppendLine("Using part.mass of " + partSim.part.mass);
+                if (log != null)
+                {
+                    log.buf.AppendLine("Using part.mass" + partSim.part.mass);
+                }
             }
 
-            if (partSim.isFairing)
-            {
-                partSim.fairingMass = partSim.part.GetModuleMass((float)partSim.realMass);
-            }
+            partSim.fairingMass = partSim.part.GetModule<ModuleProceduralFairing>()?.GetModuleMass(partSim.part.mass) ?? 0.0f;
 
             for (int i = 0; i < partSim.part.Resources.Count; i++)
             {
@@ -234,27 +233,13 @@ namespace KerbalEngineer.VesselSimulator
                     {
                         if (log != null) log.buf.AppendLine("Module: " + engine.moduleName);
 
-                        Vector3 thrustvec = this.CalculateThrustVector(vectoredThrust ? engine.thrustTransforms : null, log);
-
                         EngineSim engineSim = EngineSim.New(
                             this,
-                            atmosphere,
+							engine,
+							atmosphere,
                             (float)mach,
-                            engine.maxFuelFlow,
-                            engine.minFuelFlow,
-                            engine.thrustPercentage,
-                            thrustvec,
-                            engine.atmosphereCurve,
-                            engine.atmChangeFlow,
-                            engine.useAtmCurve ? engine.atmCurve : null,
-                            engine.useVelCurve ? engine.velCurve : null,
-                            engine.currentThrottle,
-                            engine.g,
-                            engine.throttleLocked || fullThrust,
-                            engine.propellants,
-                            engine.isOperational,
-                            engine.resultingThrust,
-                            engine.thrustTransforms,
+							vectoredThrust,
+							fullThrust,
                             log);
                         allEngines.Add(engineSim);
                     }
@@ -268,28 +253,14 @@ namespace KerbalEngineer.VesselSimulator
                     ModuleEngines engine = engines[i];
                     if (log != null) log.buf.AppendLine("Module: " + engine.moduleName);
 
-                    Vector3 thrustvec = this.CalculateThrustVector(vectoredThrust ? engine.thrustTransforms : null, log);
-
                     EngineSim engineSim = EngineSim.New(
                         this,
+						engine,
                         atmosphere,
                         (float)mach,
-                        engine.maxFuelFlow,
-                        engine.minFuelFlow,
-                        engine.thrustPercentage,
-                        thrustvec,
-                        engine.atmosphereCurve,
-                        engine.atmChangeFlow,
-                        engine.useAtmCurve ? engine.atmCurve : null,
-                        engine.useVelCurve ? engine.velCurve : null,
-                        engine.currentThrottle,
-                        engine.g,
-                        engine.throttleLocked || fullThrust,
-                        engine.propellants,
-                        engine.isOperational,
-                        engine.resultingThrust,
-                        engine.thrustTransforms,
-                        log);
+						vectoredThrust,
+						fullThrust,
+						log);
                     allEngines.Add(engineSim);
                 }
             }
@@ -417,7 +388,7 @@ namespace KerbalEngineer.VesselSimulator
                 mass += resources.GetResourceMass(resources.Types[i]);
             }
 
-            if (isFairing && currentStage <= inverseStage)
+            if (fairingMass > 0.0 && currentStage <= inverseStage)
             {
                 mass -= fairingMass;
             }
@@ -777,13 +748,7 @@ namespace KerbalEngineer.VesselSimulator
 
         private bool IsDecoupler(Part thePart)
         {
-            return thePart.HasModule<ModuleDecouple>() ||
-                   thePart.HasModule<ModuleAnchoredDecoupler>();
-        }
-
-        private bool IsFairing(Part thePart)
-        {
-            return thePart.HasModule<ModuleProceduralFairing>();
+            return thePart.GetProtoModuleDecoupler()?.IsStageEnabled ?? false;
         }
 
         private bool IsSepratron()
