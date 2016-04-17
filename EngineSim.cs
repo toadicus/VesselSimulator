@@ -201,8 +201,8 @@ namespace KerbalEngineer.VesselSimulator
             for (int i = 0; i < thrustTransforms.Count; i++)
             {
                 Transform thrustTransform = thrustTransforms[i];
-                Vector3 direction = thrustTransform.forward.normalized;
-                Vector3 position = thrustTransform.position;
+                Vector3d direction = thrustTransform.forward.normalized;
+                Vector3d position = thrustTransform.position;
 
                 AppliedForce appliedForce = AppliedForce.New(direction * engineSim.thrust * thrustTransformMultipliers[i], position);
                 engineSim.appliedForces.Add(appliedForce);
