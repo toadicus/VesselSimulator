@@ -253,7 +253,7 @@ namespace KerbalEngineer.Settings
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 

@@ -200,7 +200,7 @@ namespace KerbalEngineer.Flight.Readouts
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -262,7 +262,7 @@ namespace KerbalEngineer.Flight.Readouts
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
     }

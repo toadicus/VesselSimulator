@@ -106,7 +106,7 @@ namespace KerbalEngineer.Editor
             catch (Exception ex)
 
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -137,7 +137,8 @@ namespace KerbalEngineer.Editor
                 }
                 else
                 {
-                    part = EditorLogic.fetch.ship.parts.Find(p => p.highlighter.highlighted) ?? EditorLogic.SelectedPart;
+                    // Temp1.2: Not sure what's happened to highlighting yet
+                    part = /*EditorLogic.fetch.ship.parts.Find(p => p.highlighter.highlighted) ??*/ EditorLogic.SelectedPart;
                 }
 
                 if (part != null)
@@ -192,7 +193,7 @@ namespace KerbalEngineer.Editor
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -350,9 +351,9 @@ namespace KerbalEngineer.Editor
         private void SetResourceItems()
         {
             bool visibleResources = false;
-            for (int i = 0; i < selectedPart.Resources.list.Count; ++i)
+            for (int i = 0; i < selectedPart.Resources.Count; ++i)
             {
-                if (selectedPart.Resources.list[i].hideFlow == false)
+                if (selectedPart.Resources[i].hideFlow == false)
                 {
                     visibleResources = true;
                     break;
@@ -361,9 +362,9 @@ namespace KerbalEngineer.Editor
             if (visibleResources)
             {
                 infoItems.Add(PartInfoItem.Create("Resources"));
-                for (int i = 0; i < selectedPart.Resources.list.Count; ++i)
+                for (int i = 0; i < selectedPart.Resources.Count; ++i)
                 {
-                    partResource = selectedPart.Resources.list[i];
+                    partResource = selectedPart.Resources[i];
 
                     if (partResource.hideFlow == false)
                     {
@@ -423,10 +424,11 @@ namespace KerbalEngineer.Editor
                 {
                     infoItems.Add(PartInfoItem.Create("Breakable"));
                 }
-                if (moduleDeployableSolarPanel.sunTracking)
-                {
-                    infoItems.Add(PartInfoItem.Create("Sun Tracking"));
-                }
+                // Temp1.2: tracking has been moved into ModuleDeployablePart baseclass
+                //if (moduleDeployableSolarPanel.sunTracking)
+                //{
+                //    infoItems.Add(PartInfoItem.Create("Sun Tracking"));
+                //}
             }
         }
 
@@ -474,7 +476,7 @@ namespace KerbalEngineer.Editor
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
     }

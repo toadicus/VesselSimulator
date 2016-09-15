@@ -303,7 +303,7 @@ namespace KerbalEngineer.VesselSimulator
             }
             catch (Exception e)
             {
-                Logger.Exception(e, "SimManager.RunSimulation()");
+                KERLog.Exception(e, "SimManager.RunSimulation()");
                 Stages = null;
                 LastStage = null;
                 failMessage = e.ToString();
@@ -383,7 +383,7 @@ namespace KerbalEngineer.VesselSimulator
             }
             catch (Exception e)
             {
-                Logger.Exception(e, "SimManager.StartSimulation()");
+                KERLog.Exception(e, "SimManager.StartSimulation()");
                 failMessage = e.ToString();
                 lock (locker)
                 {

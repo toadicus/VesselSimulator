@@ -107,7 +107,7 @@ namespace KerbalEngineer.Flight
                 {
                     Instance = this;
                     GuiDisplaySize.OnSizeChanged += this.OnSizeChanged;
-                    Logger.Log("ActionMenu->Awake");
+                    KERLog.Log("ActionMenu->Awake");
                 }
                 else
                 {
@@ -116,7 +116,7 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -131,9 +131,9 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
-            Logger.Log("ActionMenu->OnDestroy");
+            KERLog.Log("ActionMenu->OnDestroy");
         }
 
         /// <summary>
@@ -146,11 +146,11 @@ namespace KerbalEngineer.Flight
                 this.windowId = this.GetHashCode();
                 this.InitialiseStyles();
                 this.Load();
-                Logger.Log("ActionMenu->Start");
+                KERLog.Log("ActionMenu->Start");
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -170,7 +170,7 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -211,7 +211,7 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex);
+                KERLog.Exception(ex);
             }
         }
 
@@ -317,7 +317,7 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex, "DisplayStack->Load");
+                KERLog.Exception(ex, "DisplayStack->Load");
             }
         }
 
@@ -343,7 +343,7 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex, "DisplayStack->Save");
+                KERLog.Exception(ex, "DisplayStack->Save");
             }
         }
 
@@ -369,7 +369,7 @@ namespace KerbalEngineer.Flight
             }
             catch (Exception ex)
             {
-                Logger.Exception(ex, "DisplayStack->Window");
+                KERLog.Exception(ex, "DisplayStack->Window");
             }
         }
 

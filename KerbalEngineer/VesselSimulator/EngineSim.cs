@@ -385,7 +385,7 @@ namespace KerbalEngineer.VesselSimulator
                         }
                         var maxStage = -1;
 
-                        //Logger.Log(type);
+                        //KERLog.Log(type);
                         for (int i = 0; i < allParts.Count; i++)
                         {
                             var aPartSim = allParts[i];
@@ -433,7 +433,7 @@ namespace KerbalEngineer.VesselSimulator
                             log = new LogMsg();
                             log.buf.AppendLine("Find " + ResourceContainer.GetResourceName(type) + " sources for " + partSim.name + ":" + partSim.partId);
                         }
-                        partSim.GetSourceSet(type, PhysicsGlobals.Stack_PriUsesSurf, allParts, visited, sourcePartSet, log, "");
+                        partSim.GetSourceSet(type, /*PhysicsGlobals.Stack_PriUsesSurf*/ false, allParts, visited, sourcePartSet, log, "");
                         if (SimManager.logOutput && log != null)
                         {
                             MonoBehaviour.print(log.buf);

@@ -52,8 +52,8 @@ namespace KerbalEngineer
         {
             string bundlePath = EngineerGlobals.AssemblyPath;
 
-            s_Images = AssetBundle.CreateFromFile(bundlePath + "/images");
-            s_Prefabs = AssetBundle.CreateFromFile(bundlePath + "/prefabs");
+            s_Images = AssetBundle.LoadFromFile(bundlePath + "/images");
+            s_Prefabs = AssetBundle.LoadFromFile(bundlePath + "/prefabs");
         }
     }
 }

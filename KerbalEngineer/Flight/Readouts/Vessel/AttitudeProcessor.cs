@@ -121,7 +121,8 @@ namespace KerbalEngineer.Flight.Readouts.Vessel
         private Quaternion GetSurfaceRotation()
         {
             // This code was derived from MechJeb2's implementation for getting the vessel's surface relative rotation.
-            this.centreOfMass = FlightGlobals.ActiveVessel.findWorldCenterOfMass();
+            //this.centreOfMass = FlightGlobals.ActiveVessel.findWorldCenterOfMass();
+            this.centreOfMass = FlightGlobals.ActiveVessel.GetWorldPos3D();
             this.up = (this.centreOfMass - FlightGlobals.ActiveVessel.mainBody.position).normalized;
             this.north = Vector3.ProjectOnPlane((FlightGlobals.ActiveVessel.mainBody.position + FlightGlobals.ActiveVessel.mainBody.transform.up * (float)FlightGlobals.ActiveVessel.mainBody.Radius) - this.centreOfMass, this.up).normalized;
 
