@@ -1,6 +1,4 @@
-using System.Text;
-
-using UnityEngine;
+﻿using System.Text;
 
 namespace KerbalEngineer
 {
@@ -15,7 +13,10 @@ namespace KerbalEngineer
 
         public void Flush()
         {
-            MonoBehaviour.print(this.buf);
+            if (this.buf.Length > 0)
+            {
+                Logger.Log(this.buf);
+            }
             this.buf.Length = 0;
         }
     }
