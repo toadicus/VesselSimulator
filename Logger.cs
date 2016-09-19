@@ -31,7 +31,7 @@ namespace KerbalEngineer
     using UnityEngine;
 
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
-    public class Logger : MonoBehaviour
+    public class KERLog : MonoBehaviour
     {
         #region Fields
 
@@ -48,7 +48,7 @@ namespace KerbalEngineer
 
         #region Initialisation
 
-        static Logger()
+        static KERLog()
         {
             assemblyName = Assembly.GetExecutingAssembly().GetName();
             fileName = Path.ChangeExtension(Assembly.GetExecutingAssembly().Location, "log");
@@ -223,7 +223,7 @@ namespace KerbalEngineer
             Flush();
         }
 
-        ~Logger()
+        ~KERLog()
         {
             Flush();
         }
