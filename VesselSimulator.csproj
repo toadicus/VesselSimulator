@@ -95,10 +95,10 @@
     <Compile Include="LogMsg.cs" />
     <Compile Include="ForceAccumulator.cs" />
     <Compile Include="Averager.cs" />
-    <Compile Include="Logger.cs" />
     <Compile Include="Stubs.cs" />
     <Compile Include="Units.cs" />
     <Compile Include="Pool.cs" />
+    <Compile Include="MyLogger.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ToadicusTools\ToadicusTools.csproj">
@@ -116,9 +116,6 @@
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\_KSPAssemblies\UnityEngine.UI.dll</HintPath>
-    </Reference>
-    <Reference Include="KSPUtil">
-      <HintPath>..\_KSPAssemblies\KSPUtil.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ProjectExtensions>
