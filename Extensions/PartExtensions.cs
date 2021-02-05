@@ -1,21 +1,21 @@
-﻿// 
+﻿//
 //     Kerbal Engineer Redux
-// 
+//
 //     Copyright (C) 2014 CYBUTEK
-// 
+//
 //     This program is free software: you can redistribute it and/or modify
 //     it under the terms of the GNU General Public License as published by
 //     the Free Software Foundation, either version 3 of the License, or
 //     (at your option) any later version.
-// 
+//
 //     This program is distributed in the hope that it will be useful,
 //     but WITHOUT ANY WARRANTY; without even the implied warranty of
 //     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //     GNU General Public License for more details.
-// 
+//
 //     You should have received a copy of the GNU General Public License
 //     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-// 
+//
 
 namespace KerbalEngineer.Extensions
 {
@@ -110,7 +110,7 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetCostWet(this Part part)
         {
-            return part.partInfo.cost - GetResourceCostInverted(part) + part.GetModuleCostsNoAlloc(0.0f); // part.GetModuleCosts allocate 44B per call. 
+            return part.partInfo.cost - GetResourceCostInverted(part) + part.GetModuleCostsNoAlloc(0.0f); // part.GetModuleCosts allocate 44B per call.
         }
 
         /// <summary>
@@ -601,7 +601,7 @@ namespace KerbalEngineer.Extensions
         }
 
         // This needs updating to handle multi-mode engines and engines with multiple ModuleEngines correctly.
-        // It currently just shows the stats of the currently active module for multi-mode engines and just 
+        // It currently just shows the stats of the currently active module for multi-mode engines and just
         // the first ModuleEngines for engines with multiple modules.
         // It should really show all the modes for multi-mode engines as separate sections.
         // For other engines with multiple ModuleEngines it should combine the separate modules into a single set of data
