@@ -118,8 +118,46 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetDryMass(this Part part)
         {
-            return (part.physicalSignificance == Part.PhysicalSignificance.FULL) ? part.mass : 0d;
+            return (part.physicalSignificance == Part.PhysicalSignificance.FULL) ? part.mass + part.getCrewAdjustment() : 0d;
         }
+
+        public static double getCrewAdjustment(this Part part)
+        {
+            //if (HighLogic.LoadedSceneIsEditor && PhysicsGlobals.KerbalCrewMass != 0 && ShipConstruction.ShipManifest != null)
+            //{ //fix weird stock behavior with this physics setting.
+
+            //    var crewlist = ShipConstruction.ShipManifest.GetAllCrew(false);
+
+            //    int crew = 0;
+
+            //    foreach (var crewmem in crewlist)
+            //    {
+            //        if (crewmem != null) crew++;
+            //    }
+
+            //    if (crew > 0)
+            //    {
+            //        var pcm = ShipConstruction.ShipManifest.GetPartCrewManifest(part.craftID);
+
+            //        int actualCrew = 0;
+
+            //        foreach (var crewmem in pcm.GetPartCrew())
+            //        {
+            //            if (crewmem != null)
+            //                actualCrew++;
+            //        }
+
+            //        if (actualCrew < crew)
+            //        {
+            //            return -PhysicsGlobals.KerbalCrewMass * (crew - actualCrew);
+            //        }
+
+            //    }
+            //}
+
+            return 0;
+        }
+   
 
         /// <summary>
         ///     Gets the maximum thrust of the part if it's an engine.
@@ -374,7 +412,7 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static double GetWetMass(this Part part)
         {
-            return (part.physicalSignificance == Part.PhysicalSignificance.FULL) ? part.mass + part.GetResourceMass() : part.GetResourceMass();
+            return (part.physicalSignificance == Part.PhysicalSignificance.FULL) ? part.mass + part.GetResourceMass() + part.getCrewAdjustment() : part.GetResourceMass();
         }
 
         /// <summary>
@@ -533,7 +571,26 @@ namespace KerbalEngineer.Extensions
         /// </summary>
         public static bool IsSepratron(this Part part)
         {
-            return IsSolidRocket(part) && part.ActivatesEvenIfDisconnected && IsDecoupledInStage(part, part.inverseStage);
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                if (part.Modules[i] is ModuleEngines)
+                {
+                    if ((part.Modules[i] as ModuleEngines).throttleLocked)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool ContainedPart(this Part part, List<Part> chain)
+        {
+            for (int i = 0; i < chain.Count; i++)
+            {
+                if (chain[i] == part)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>

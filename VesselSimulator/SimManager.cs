@@ -27,6 +27,7 @@ namespace KerbalEngineer.VesselSimulator
     using System.Reflection;
     using System.Threading;
     using UnityEngine;
+    using Helpers;
 
     #endregion
 
@@ -43,6 +44,7 @@ namespace KerbalEngineer.VesselSimulator
 
         public static bool dumpTree = false;
         public static bool logOutput = false;
+        public static LogMsg log = new LogMsg();
         public static TimeSpan minSimTime = new TimeSpan(0, 0, 0, 0, 150);
         public static bool vectoredThrust = false;
         private static readonly object locker = new object();
@@ -55,14 +57,16 @@ namespace KerbalEngineer.VesselSimulator
         // Support for RealFuels using reflection to check localCorrectThrust without dependency
 
         private static bool hasCheckedForMods;
-        private static bool hasInstalledRealFuels;
+        public static bool hasInstalledRealFuels;
         private static FieldInfo RF_ModuleEngineConfigs_localCorrectThrust;
         private static FieldInfo RF_ModuleHybridEngine_localCorrectThrust;
         private static FieldInfo RF_ModuleHybridEngines_localCorrectThrust;
         private static bool hasInstalledKIDS;
         private static MethodInfo KIDS_Utils_GetIspMultiplier;
         private static bool bKIDSThrustISP = false;
-        private static List<Part> parts = new List<Part>(); 
+        private static object[] KIDSparameters;
+
+        private static List<Part> parts = new List<Part>();
 
         private static Simulation simulation = new Simulation();
         #endregion
@@ -103,16 +107,13 @@ namespace KerbalEngineer.VesselSimulator
 
             foreach (var assembly in AssemblyLoader.loadedAssemblies)
             {
-                if (SimManager.logOutput)
-                {
-                    MonoBehaviour.print("Assembly:" + assembly.assembly);
-                }
+                log.AppendLine("Assembly: ", assembly.assembly);
 
                 var name = assembly.assembly.ToString().Split(',')[0];
 
                 if (name == "RealFuels")
                 {
-                    MonoBehaviour.print("Found RealFuels mod");
+                    log.AppendLine("Found RealFuels mod");
 
                     var RF_ModuleEngineConfigs_Type = assembly.assembly.GetType("RealFuels.ModuleEngineConfigs");
                     if (RF_ModuleEngineConfigs_Type != null)
@@ -137,15 +138,19 @@ namespace KerbalEngineer.VesselSimulator
                 }
                 else if (name == "KerbalIspDifficultyScaler")
                 {
+                    log.AppendLine("Found KIDS mod");
+
                     var KIDS_Utils_Type = assembly.assembly.GetType("KerbalIspDifficultyScaler.KerbalIspDifficultyScalerUtils");
                     if (KIDS_Utils_Type != null)
                     {
                         KIDS_Utils_GetIspMultiplier = KIDS_Utils_Type.GetMethod("GetIspMultiplier");
                     }
 
+                    KIDSparameters = new object[6];
                     hasInstalledKIDS = true;
                 }
             }
+            log.Flush();
         }
 
         public static bool DoesEngineUseCorrectedThrust(Part theEngine)
@@ -202,9 +207,9 @@ namespace KerbalEngineer.VesselSimulator
             if (hasInstalledKIDS)
             {
                 // (out ispMultiplierVac, out ispMultiplierAtm, out extendToZeroIsp, out thrustCorrection, out ispCutoff, out thrustCutoff);
-                object[] parameters = new object[6];
-                KIDS_Utils_GetIspMultiplier.Invoke(null, parameters);
-                bKIDSThrustISP = (bool)parameters[3];
+                KIDSparameters.Initialize();
+                KIDS_Utils_GetIspMultiplier.Invoke(null, KIDSparameters);
+                bKIDSThrustISP = (bool)KIDSparameters[3];
             }
         }
 
@@ -290,7 +295,7 @@ namespace KerbalEngineer.VesselSimulator
         {
             try
             {
-                Stages = (simObject as Simulation).RunSimulation();
+                Stages = (simObject as Simulation).RunSimulation(logOutput ? log : null);
 
                 if (Stages != null && Stages.Length > 0)
                 {
@@ -298,7 +303,7 @@ namespace KerbalEngineer.VesselSimulator
                     {
                         foreach (var stage in Stages)
                         {
-                            stage.Dump();
+                            stage.Dump(log);
                         }
                     }
                     LastStage = Stages[Stages.Length - 1];
@@ -315,11 +320,11 @@ namespace KerbalEngineer.VesselSimulator
             {
                 timer.Stop();
 #if TIMERS
-            MonoBehaviour.print("Total simulation time: " + timer.ElapsedMilliseconds + "ms");
+                log.AppendLine("Total simulation time: ", timer.ElapsedMilliseconds, "ms");
 #else
                 if (logOutput)
                 {
-                    MonoBehaviour.print("Total simulation time: " + timer.ElapsedMilliseconds + "ms");
+                    log.AppendLine("Total simulation time: ", timer.ElapsedMilliseconds, "ms");
                 }
 #endif
 
@@ -334,9 +339,7 @@ namespace KerbalEngineer.VesselSimulator
 
                 bRunning = false;
                 if (OnReady != null)
-                {
-                    OnReady();
-                }
+                    OnReady.Invoke();
             }
 
             logOutput = false;
@@ -365,11 +368,11 @@ namespace KerbalEngineer.VesselSimulator
                 else
                 {
                     parts = FlightGlobals.ActiveVessel.Parts;
-                    Atmosphere = FlightGlobals.ActiveVessel.staticPressurekPa * PhysicsGlobals.KpaToAtmospheres;
+                    Atmosphere = FlightGlobals.ActiveVessel.staticPressurekPa * Units.KpaToAtmospheres;
                 }
 
                 // This call doesn't ever fail at the moment but we'll check and return a sensible error for display
-                if (simulation.PrepareSimulation(parts, Gravity, Atmosphere, Mach, dumpTree, vectoredThrust))
+                if (simulation.PrepareSimulation(logOutput ? log : null, parts, Gravity, Atmosphere, Mach, dumpTree, vectoredThrust))
                 {
                     ThreadPool.QueueUserWorkItem(RunSimulation, simulation);
                     //RunSimulation(simulation);
